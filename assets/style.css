@@ -96,3 +96,11 @@ tr:hover td{background:var(--sur2)}
 .fc-val.good{color:var(--green)}
 .fc-val.warn{color:var(--amber)}
 .fc-val.bad{color:var(--red)}
+
+.flag-pill{display:inline-block;font-size:11px;font-weight:600;padding:1px 6px;border-radius:20px;background:#fee2e2;color:#b91c1c;margin-left:4px;cursor:help}
+.warn-metric{border-color:#f3c9c4;background:#fdf2f1}
+.warn-metric .mv{color:var(--red)}
+.opaque-note{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tx2);background:var(--sur2);border-radius:6px;padding:8px 10px;margin-bottom:10px}
+.opaque-row td{color:var(--tx2)}
+.tag-internal{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:20px;background:#f1f0ec;color:var(--tx3);margin-left:4px;text-transform:uppercase;letter-spacing:.03em}
+.qsel{height:28px;font-size:12px;padding:0 6px;border-radius:6px;border:1px solid var(--bor);background:var(--sur);color:var(--tx);font-family:inherit}
