@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TFB Recettes R&D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+<div class="topbar-l">
+<a href="/" class="logo">THE FRENCH BASTARDS <span>R&D</span></a>
+<span class="badge">Recettes existantes</span>
+<div class="pagenav">
+<a href="/" class="active">Recettes existantes</a>
+<a href="/developpement.html">R&D Developpement</a>
+<a href="/qualite.html">Qualite matieres</a>
+</div>
+</div>
+<div class="topbar-r">
+<button class="btn btn-sm" onclick="loadAll()"><i class="ti ti-refresh"></i> Actualiser</button>
+</div>
+</nav>
+<div class="main">
+<div class="conn" id="conn">
+<div class="dot" id="dot"></div>
+<div style="flex:1;font-size:13px;color:var(--tx2)" id="conn-txt">Connexion a Inpulse...</div>
+</div>
+<div class="metrics" id="metrics"></div>
+<div class="filters">
+<div class="fg" id="statusFilter">
+<button class="fgb active" data-v="all">Toutes</button>
+<button class="fgb" data-v="active">Actives</button>
+<button class="fgb" data-v="inactive">Inactives</button>
+</div>
+<select id="catFilter"><option value="all">Toutes categories</option></select>
+<div class="sw"><i class="ti ti-search"></i><input class="si" id="search" type="text" placeholder="Rechercher une recette..."></div>
+</div>
+<div class="section">
+<div class="sh"><div class="st">Recettes</div><div class="sm" id="countTxt"></div></div>
+<div class="tw">
+<table>
+<thead><tr><th>Nom</th><th>Categorie</th><th>Composants</th><th>Food cost</th><th>Statut</th><th></th></tr></thead>
+<tbody id="tbody"><tr><td colspan="6" class="loading-row">Chargement...</td></tr></tbody>
+</table>
+</div>
+</div>
+</div>
+<div id="modalRoot"></div>
+<script src="/assets/app.js"></script>
+<script>
+var ENDPOINT_CANDIDATES = ["/public/v2/recipes", "/public/v2/kitchen-products", "/public/v2/products"];
+var WORKING_ENDPOINT = null;
+var ALL = [];
+function extractList(resp) {
+  if (Array.isArray(resp)) return resp;
+  if (resp && Array.isArray(resp.data)) return resp.data;
+  if (resp && Array.isArray(resp.items)) return resp.items;
+  if (resp && Array.isArray(resp.results)) return resp.results;
+  return [];
+}
+function getName(r) { return r.name || r.label || r.title || r.designation || "(sans nom)"; }
+function getCategory(r) {
+  if (r.category && r.category.name) return r.category.name;
+  if (r.category_name) return r.category_name;
+  if (typeof r.category === "string") return r.category;
+  return "\u2014";
+}
+function isActive(r) {
+  if (typeof r.is_active === "boolean") return r.is_active;
+  if (typeof r.active === "boolean") return r.active;
+  if (typeof r.enabled === "boolean") return r.enabled;
+  if (typeof r.status === "string") return r.status.toLowerCase() === "active";
+  return true;
+}
+function getComponents(r) {
+  return r.components || r.ingredients || r.recipe_ingredients || r.items || [];
+}
+function getFoodCost(r) {
+  if (typeof r.cost === "number") return r.cost;
+  if (typeof r.food_cost === "number") return r.food_cost;
+  if (typeof r.total_cost === "number") return r.total_cost;
+  var comps = getComponents(r);
+  var sum = 0;
+  comps.forEach(function(c){ sum += Number(c.cost || c.total_cost || 0); });
+  return sum;
+}
+function loadAll() {
+  document.getElementById("conn-txt").textContent = "Connexion a Inpulse...";
+  document.getElementById("dot").className = "dot spin";
+  tryEndpoints(0);
+}
+function tryEndpoints(i) {
+  if (i >= ENDPOINT_CANDIDATES.length) {
+    document.getElementById("dot").className = "dot err";
+    document.getElementById("conn-txt").textContent = "Impossible de recuperer les recettes depuis Inpulse.";
+    document.getElementById("tbody").innerHTML = "<tr><td colspan=\"6\" class=\"loading-row\">Aucune donnee</td></tr>";
+    return;
+  }
+  var ep = ENDPOINT_CANDIDATES[i];
+  apiGet(ep, { max_per_page: 1000 }).then(function(resp) {
+    var list = extractList(resp);
+    if (!list.length) { tryEndpoints(i+1); return; }
+    WORKING_ENDPOINT = ep;
+    ALL = list;
+    document.getElementById("dot").className = "dot ok";
+    document.getElementById("conn-txt").textContent = list.length + " recettes chargees depuis " + ep;
+    populateCategories();
+    render();
+  }).catch(function(e) {
+    tryEndpoints(i+1);
+  });
+}
+function populateCategories() {
+  var cats = {};
+  ALL.forEach(function(r){ cats[getCategory(r)] = true; });
+  var sel = document.getElementById("catFilter");
+  sel.innerHTML = "<option value=\"all\">Toutes categories</option>";
+  Object.keys(cats).sort().forEach(function(c){
+    var o = document.createElement("option"); o.value = c; o.textContent = c; sel.appendChild(o);
+  });
+}
+var currentStatus = "all";
+document.addEventListener("click", function(e){
+  var b = e.target.closest("#statusFilter .fgb");
+  if (b) {
+    document.querySelectorAll("#statusFilter .fgb").forEach(function(x){x.classList.remove("active");});
+    b.classList.add("active");
+    currentStatus = b.dataset.v;
+    render();
+  }
+});
+function render() {
+  var status = currentStatus;
+  var cat = document.getElementById("catFilter").value;
+  var q = document.getElementById("search").value.toLowerCase();
+  var filtered = ALL.filter(function(r) {
+    var active = isActive(r);
+    if (status === "active" && !active) return false;
+    if (status === "inactive" && active) return false;
+    if (cat !== "all" && getCategory(r) !== cat) return false;
+    if (q && getName(r).toLowerCase().indexOf(q) === -1) return false;
+    return true;
+  });
+  document.getElementById("countTxt").textContent = filtered.length + " / " + ALL.length;
+  var rows = filtered.map(function(r) {
+    var idx = ALL.indexOf(r);
+    var comps = getComponents(r);
+    var cost = getFoodCost(r);
+    return "<tr onclick=\"openDetail(" + idx + ")\" style=\"cursor:pointer\">" +
+      "<td class=\"tb\">" + escapeHtml(getName(r)) + "</td>" +
+      "<td>" + escapeHtml(getCategory(r)) + "</td>" +
+      "<td class=\"num\">" + comps.length + "</td>" +
+      "<td class=\"num\">" + fmtEUR(cost) + "</td>" +
+      "<td>" + (isActive(r) ? "<span class=\"pill ok\">Active</span>" : "<span class=\"pill ko\">Inactive</span>") + "</td>" +
+      "<td><i class=\"ti ti-chevron-right\"></i></td>" +
+    "</tr>";
+  }).join("");
+  document.getElementById("tbody").innerHTML = rows || "<tr><td colspan=\"6\" class=\"loading-row\">Aucune recette ne correspond aux filtres</td></tr>";
+  renderMetrics();
+}
+function renderMetrics() {
+  var total = ALL.length;
+  var actives = ALL.filter(isActive).length;
+  var inactives = total - actives;
+  var cats = {}; ALL.forEach(function(r){cats[getCategory(r)] = true;});
+  var avgCost = total ? (ALL.reduce(function(s,r){return s+getFoodCost(r);},0) / total) : 0;
+  document.getElementById("metrics").innerHTML =
+    "<div class=\"metric\"><div class=\"ml\">Recettes</div><div class=\"mv\">" + total + "</div></div>" +
+    "<div class=\"metric accent\"><div class=\"ml\">Actives</div><div class=\"mv\">" + actives + "</div></div>" +
+    "<div class=\"metric\"><div class=\"ml\">Inactives</div><div class=\"mv\">" + inactives + "</div></div>" +
+    "<div class=\"metric\"><div class=\"ml\">Categories</div><div class=\"mv\">" + Object.keys(cats).length + "</div></div>" +
+    "<div class=\"metric\"><div class=\"ml\">Food cost moyen</div><div class=\"mv\">" + fmtEUR(avgCost) + "</div></div>";
+}
+function openDetail(idx) {
+  var r = ALL[idx];
+  var comps = getComponents(r);
+  var rowsHtml = comps.map(function(c) {
+    var name = c.name || c.label || (c.ingredient && c.ingredient.name) || "?";
+    var qty = c.quantity || c.qty || c.weight || 0;
+    var unit = c.unit || c.unit_name || "g";
+    var cost = c.cost || c.total_cost || 0;
+    var supplier = (c.supplier && c.supplier.name) || c.supplier_name || "\u2014";
+    return "<tr><td>" + escapeHtml(name) + "</td><td class=\"num\">" + fmtNum(qty) + "</td><td>" + escapeHtml(unit) + "</td><td>" + escapeHtml(supplier) + "</td><td class=\"num\">" + fmtEUR(cost) + "</td></tr>";
+  }).join("");
+  var html = "<div class=\"modal-bg\" onclick=\"if(event.target===this) closeModal()\">" +
+    "<div class=\"modal\">" +
+      "<div class=\"modal-h\"><h2>" + escapeHtml(getName(r)) + "</h2><button class=\"btn btn-sm\" onclick=\"closeModal()\">Fermer</button></div>" +
+      "<div class=\"sm\" style=\"margin-bottom:12px\">Categorie : " + escapeHtml(getCategory(r)) + " \u2014 Food cost brut : " + fmtEUR(getFoodCost(r)) + "</div>" +
+      "<div class=\"tw\"><table><thead><tr><th>Ingredient</th><th>Grammage</th><th>Unite</th><th>Fournisseur</th><th>Cout</th></tr></thead><tbody>" + (rowsHtml || "<tr><td colspan=\"5\" class=\"loading-row\">Aucun composant</td></tr>") + "</tbody></table></div>" +
+    "</div>" +
+  "</div>";
+  document.getElementById("modalRoot").innerHTML = html;
+}
+function closeModal() { document.getElementById("modalRoot").innerHTML = ""; }
+document.getElementById("catFilter").addEventListener("change", render);
+document.getElementById("search").addEventListener("input", debounce(render, 200));
+loadAll();
+</script>
+</body>
+</html>
