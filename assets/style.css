@@ -77,3 +77,22 @@ tr:hover td{background:var(--sur2)}
 .card-title{font-weight:600;font-size:14px;margin-bottom:2px}
 .toast{position:fixed;bottom:20px;right:20px;background:var(--tx);color:#fff;padding:10px 16px;border-radius:var(--rs);font-size:13px;z-index:200;box-shadow:0 8px 20px rgba(0,0,0,.2)}
 @media(max-width:680px){.main{padding:12px}.ing-row{grid-template-columns:1fr 1fr}.grid2,.grid3{grid-template-columns:1fr}}
+
+
+.cat-row{cursor:pointer;background:var(--sur2)}
+.cat-row td{padding:10px 12px;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--tx2)}
+.cat-row .cnt{font-weight:400;text-transform:none;color:var(--tx3);margin-left:6px;font-size:11px}
+.cat-row .chev{display:inline-block;transition:transform .15s;margin-right:6px}
+.cat-row.collapsed .chev{transform:rotate(-90deg)}
+.recipe-row.hidden{display:none}
+.recipe-row{cursor:pointer}
+.recipe-row td.name{font-weight:500}
+.exp-chev{display:inline-block;transition:transform .15s;color:var(--tx3)}
+.expand-row td{background:var(--gbg);padding:0}
+.exp-wrap{padding:14px 16px}
+.exp-head{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px;font-size:12px;color:var(--tx2)}
+.exp-head b{color:var(--tx)}
+.fc-val{font-weight:600}
+.fc-val.good{color:var(--green)}
+.fc-val.warn{color:var(--amber)}
+.fc-val.bad{color:var(--red)}
