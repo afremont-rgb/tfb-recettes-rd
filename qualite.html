@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TFB Recettes R&D - Qualite matieres</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+<div class="topbar-l">
+<a href="/" class="logo">THE FRENCH BASTARDS <span>R&D</span></a>
+<span class="badge">Qualite matieres</span>
+<div class="pagenav">
+<a href="/">Recettes existantes</a>
+<a href="/developpement.html">R&D Developpement</a>
+<a href="/qualite.html" class="active">Qualite matieres</a>
+</div>
+</div>
+<div class="topbar-r">
+<button class="btn btn-sm" onclick="loadAll()"><i class="ti ti-refresh"></i> Actualiser</button>
+</div>
+</nav>
+<div class="main">
+<div class="conn" id="conn">
+<div class="dot" id="dot"></div>
+<div style="flex:1;font-size:13px;color:var(--tx2)" id="conn-txt">Connexion a Inpulse...</div>
+</div>
+<div class="metrics" id="metrics"></div>
+<div class="filters">
+<select id="qFilter"><option value="all">Toutes qualites</option><option value="none">Non renseignee</option><option>A definir</option><option>Standard</option><option>Bio</option><option>Premium</option><option>Local</option><option>A ameliorer</option></select>
+<div class="sw"><i class="ti ti-search"></i><input class="si" id="search" type="text" placeholder="Rechercher une matiere premiere..."></div>
+</div>
+<div class="section">
+<div class="sh"><div class="st">Matieres premieres</div><div class="sm" id="countTxt"></div></div>
+<div class="tw">
+<table>
+<thead><tr><th>Nom</th><th>Categorie</th><th>Fournisseur</th><th>Cout / kg</th><th>Qualite</th><th>Commentaire</th></tr></thead>
+<tbody id="tbody"><tr><td colspan="6" class="loading-row">Chargement...</td></tr></tbody>
+</table>
+</div>
+</div>
+</div>
+<script src="/assets/app.js"></script>
+<script>
+var ING_ENDPOINTS = ["/public/v2/ingredients"];
+var INGREDIENTS = [];
+var QUALITY = {};
+function extractList(resp) {
+  if (Array.isArray(resp)) return resp;
+  if (resp && Array.isArray(resp.data)) return resp.data;
+  if (resp && Array.isArray(resp.items)) return resp.items;
+  if (resp && Array.isArray(resp.results)) return resp.results;
+  return [];
+}
+function getIngId(i) { return String(i.id || i.uuid || i._id || getIngName(i)); }
+function getIngName(i) { return i.name || i.label || i.title || "?"; }
+function getIngCategory(i) {
+  if (i.category && i.category.name) return i.category.name;
+  if (i.category_name) return i.category_name;
+  if (typeof i.category === "string") return i.category;
+  return "\u2014";
+}
+function getIngSupplier(i) { return (i.supplier && i.supplier.name) || i.supplier_name || "\u2014"; }
+function getIngCostKg(i) {
+  if (typeof i.cost_per_kg === "number") return i.cost_per_kg;
+  if (typeof i.price_per_kg === "number") return i.price_per_kg;
+  if (typeof i.cost === "number") return i.cost;
+  return 0;
+}
+function loadAll() {
+  document.getElementById("conn-txt").textContent = "Connexion a Inpulse...";
+  document.getElementById("dot").className = "dot spin";
+  Promise.all([loadIngredients(), loadQuality()]).then(function(){
+    document.getElementById("dot").className = "dot ok";
+    document.getElementById("conn-txt").textContent = INGREDIENTS.length + " matieres premieres chargees";
+    renderMetrics();
+    render();
+  }).catch(function(e){
+    document.getElementById("dot").className = "dot err";
+    document.getElementById("conn-txt").textContent = "Erreur de chargement: " + e.message;
+  });
+}
+function tryList(endpoints, i) {
+  if (i >= endpoints.length) return Promise.resolve([]);
+  return apiGet(endpoints[i], { max_per_page: 2000 }).then(function(resp){
+    var list = extractList(resp);
+    if (!list.length) return tryList(endpoints, i+1);
+    return list;
+  }).catch(function(){ return tryList(endpoints, i+1); });
+}
+function loadIngredients() { return tryList(ING_ENDPOINTS, 0).then(function(l){ INGREDIENTS = l; }); }
+function loadQuality() { return qualityGetAll().then(function(q){ QUALITY = q || {}; }); }
+function renderMetrics() {
+  var total = INGREDIENTS.length;
+  var rated = INGREDIENTS.filter(function(i){ var q = QUALITY[getIngId(i)]; return q && q.grade; }).length;
+  document.getElementById("metrics").innerHTML =
+    "<div class=\"metric\"><div class=\"ml\">Matieres premieres</div><div class=\"mv\">" + total + "</div></div>" +
+    "<div class=\"metric accent\"><div class=\"ml\">Qualite renseignee</div><div class=\"mv\">" + rated + "</div></div>" +
+    "<div class=\"metric\"><div class=\"ml\">Non renseignee</div><div class=\"mv\">" + (total-rated) + "</div></div>";
+}
+var GRADES = ["A definir", "Standard", "Bio", "Premium", "Local", "A ameliorer"];
+function render() {
+  var qf = document.getElementById("qFilter").value;
+  var q = document.getElementById("search").value.toLowerCase();
+  var list = INGREDIENTS.filter(function(i){
+    var grade = (QUALITY[getIngId(i)] || {}).grade || "";
+    if (qf === "none" && grade) return false;
+    if (qf !== "all" && qf !== "none" && grade !== qf) return false;
+    if (q && getIngName(i).toLowerCase().indexOf(q) === -1) return false;
+    return true;
+  });
+  document.getElementById("countTxt").textContent = list.length + " / " + INGREDIENTS.length;
+  var rows = list.map(function(i){
+    var id = getIngId(i);
+    var cur = QUALITY[id] || {};
+    var options = GRADES.map(function(g){ return "<option" + (cur.grade===g?" selected":"") + ">" + g + "</option>"; }).join("");
+    return "<tr>" +
+      "<td class=\"tb\">" + escapeHtml(getIngName(i)) + "</td>" +
+      "<td>" + escapeHtml(getIngCategory(i)) + "</td>" +
+      "<td>" + escapeHtml(getIngSupplier(i)) + "</td>" +
+      "<td class=\"num\">" + fmtEUR(getIngCostKg(i)) + "</td>" +
+      "<td><select onchange=\"setGrade('" + id + "',this.value,'" + escapeHtml(getIngName(i)).replace(/'/g,"\\'") + "')\"><option value=\"\">--</option>" + options + "</select></td>" +
+      "<td><input type=\"text\" value=\"" + escapeHtml(cur.comment||"") + "\" placeholder=\"Commentaire\" onblur=\"setComment('" + id + "',this.value,'" + escapeHtml(getIngName(i)).replace(/'/g,"\\'") + "')\"></td>" +
+    "</tr>";
+  }).join("");
+  document.getElementById("tbody").innerHTML = rows || "<tr><td colspan=\"6\" class=\"loading-row\">Aucune matiere ne correspond</td></tr>";
+}
+function setGrade(id, grade, name) {
+  QUALITY[id] = Object.assign({}, QUALITY[id], { grade: grade, name: name });
+  qualitySet(id, { grade: grade, name: name, comment: (QUALITY[id]&&QUALITY[id].comment)||"" }).then(function(){
+    renderMetrics();
+    toast("Qualite mise a jour");
+  });
+}
+function setComment(id, comment, name) {
+  QUALITY[id] = Object.assign({}, QUALITY[id], { comment: comment, name: name });
+  qualitySet(id, { comment: comment, name: name, grade: (QUALITY[id]&&QUALITY[id].grade)||"" }).then(function(){
+    toast("Commentaire enregistre");
+  });
+}
+document.getElementById("qFilter").addEventListener("change", render);
+document.getElementById("search").addEventListener("input", debounce(render, 200));
+loadAll();
+</script>
+</body>
+</html>
