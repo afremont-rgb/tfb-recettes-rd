@@ -377,7 +377,7 @@ function buildExpandHtml(r, rows) {
     '<span>Food cost brut : <b class="fc-val ' + cls + '">' + (pct != null ? fmtPct(pct) : '—') + '</b>' + (flag ? ' <span class="flag-pill" title="' + escapeHtml(flag) + '">⚠ ' + escapeHtml(flag) + '</span>' : '') + '</span>' +
     '</div>';
   if (hasOpaque) {
-    head += '<div class="opaque-note"><i class="ti ti-info-circle"></i> Certains composants sont des sous-recettes fabriquees en interne (laboratoire) dont le detail des ingredients n'est pas expose par Inpulse : ils sont affiches tels quels ci-dessous.</div>';
+    head += '<div class="opaque-note"><i class="ti ti-info-circle"></i> Certains composants sont des sous-recettes fabriquees en interne (laboratoire) : le detail de leurs ingredients ne peut pas etre affiche car Inpulse ne l expose pas via son API publique. Ils sont affiches tels quels ci-dessous.</div>';
   }
   var bodyRows = rows.map(function (c) {
     var qsel = '<select class="qsel" data-id="' + c.id + '"><option value="">Non renseignee</option>' +
