@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TFB Recettes R&D - Developpement</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+<div class="topbar-l">
+<a href="/" class="logo">THE FRENCH BASTARDS <span>R&D</span></a>
+<span class="badge">R&D Developpement</span>
+<div class="pagenav">
+<a href="/">Recettes existantes</a>
+<a href="/developpement.html" class="active">R&D Developpement</a>
+<a href="/qualite.html">Qualite matieres</a>
+</div>
+</div>
+<div class="topbar-r">
+<button class="btn btn-gold btn-sm" onclick="openCreate()"><i class="ti ti-plus"></i> Nouvelle recette</button>
+</div>
+</nav>
+<div class="main">
+<div class="conn" id="conn">
+<div class="dot" id="dot"></div>
+<div style="flex:1;font-size:13px;color:var(--tx2)" id="conn-txt">Connexion a Inpulse...</div>
+</div>
+<div class="metrics" id="metrics"></div>
+<div class="section">
+<div class="sh"><div class="st">Recettes en developpement (non commandees en boutique)</div><div class="sm" id="countTxt1"></div></div>
+<div class="tw">
+<table>
+<thead><tr><th>Nom</th><th>Categorie</th><th>Composants</th><th>Food cost</th><th></th></tr></thead>
+<tbody id="tbody1"><tr><td colspan="5" class="loading-row">Chargement...</td></tr></tbody>
+</table>
+</div>
+</div>
+<div class="section">
+<div class="sh"><div class="st">Brouillons R&D (crees ici)</div><div class="sm" id="countTxt2"></div></div>
+<div class="tw">
+<table>
+<thead><tr><th>Nom</th><th>Categorie</th><th>Prix vente</th><th>Food cost</th><th>Statut</th><th></th></tr></thead>
+<tbody id="tbody2"><tr><td colspan="6" class="loading-row">Chargement...</td></tr></tbody>
+</table>
+</div>
+</div>
+</div>
+<div id="modalRoot"></div>
+<script src="/assets/app.js"></script>
+<script>
+var RECIPE_ENDPOINTS = ["/public/v2/recipes", "/public/v2/kitchen-products", "/public/v2/products"];
+var ING_ENDPOINTS = ["/public/v2/ingredients"];
+var RECIPES = [];
+var INGREDIENTS = [];
+var DRAFTS = {};
+var currentDraftId = null;
+var currentIngredients = [];
+function extractList(resp) {
+  if (Array.isArray(resp)) return resp;
+  if (resp && Array.isArray(resp.data)) return resp.data;
+  if (resp && Array.isArray(resp.items)) return resp.items;
+  if (resp && Array.isArray(resp.results)) return resp.results;
+  return [];
+}
+function getName(r) { return r.name || r.label || r.title || r.designation || "(sans nom)"; }
+function getCategory(r) {
+  if (r.category && r.category.name) return r.category.name;
+  if (r.category_name) return r.category_name;
+  if (typeof r.category === "string") return r.category;
+  return "\u2014";
+}
+function getComponents(r) { return r.components || r.ingredients || r.recipe_ingredients || r.items || []; }
+function getFoodCost(r) {
+  if (typeof r.cost === "number") return r.cost;
+  if (typeof r.food_cost === "number") return r.food_cost;
+  if (typeof r.total_cost === "number") return r.total_cost;
+  var comps = getComponents(r);
+  var sum = 0;
+  comps.forEach(function(c){ sum += Number(c.cost || c.total_cost || 0); });
+  return sum;
+}
+function isLinkedToStore(r) {
+  if (Array.isArray(r.products) && r.products.length) return true;
+  if (Array.isArray(r.store_links) && r.store_links.length) return true;
+  if (typeof r.is_sellable === "boolean") return r.is_sellable;
+  if (typeof r.used_count === "number") return r.used_count > 0;
+  return null;
+}
+function getIngName(i) { return i.name || i.label || i.title || "?"; }
+function getIngCostKg(i) {
+  if (typeof i.cost_per_kg === "number") return i.cost_per_kg;
+  if (typeof i.price_per_kg === "number") return i.price_per_kg;
+  if (typeof i.cost === "number") return i.cost;
+  return 0;
+}
+function renderDevRecipes() {
+  var list = RECIPES.filter(function(r){ return isLinkedToStore(r) === false; });
+  var unknown = RECIPES.length && list.length === 0 && RECIPES.every(function(r){ return isLinkedToStore(r) === null; });
+  document.getElementById("countTxt1").textContent = list.length + " / " + RECIPES.length;
+  if (unknown) {
+    document.getElementById("tbody1").innerHTML = "<tr><td colspan=\"5\" class=\"loading-row\">Statut commande non detectable automatiquement pour le moment. Verifiez dans Inpulse.</td></tr>";
+    return;
+  }
+  var rows = list.map(function(r){
+    var comps = getComponents(r);
+    return "<tr><td class=\"tb\">" + escapeHtml(getName(r)) + "</td><td>" + escapeHtml(getCategory(r)) + "</td><td class=\"num\">" + comps.length + "</td><td class=\"num\">" + fmtEUR(getFoodCost(r)) + "</td><td></td></tr>";
+  }).join("");
+  document.getElementById("tbody1").innerHTML = rows || "<tr><td colspan=\"5\" class=\"loading-row\">Aucune recette en developpement detectee</td></tr>";
+}
+function renderDrafts() {
+  var ids = Object.keys(DRAFTS);
+  document.getElementById("countTxt2").textContent = ids.length;
+  var rows = ids.map(function(id){
+    var d = DRAFTS[id];
+    return "<tr><td class=\"tb\">" + escapeHtml(d.name||"") + "</td><td>" + escapeHtml(d.category||"") + "</td><td class=\"num\">" + fmtEUR(d.salePrice||0) + "</td><td class=\"num\">" + fmtPct(d.foodCostPct||0) + "</td><td><span class=\"pill gold\">Brouillon</span></td>" +
+      "<td><button class=\"btn btn-sm\" onclick=\"editDraft('"+id+"')\">Modifier</button> <button class=\"btn btn-sm btn-danger\" onclick=\"removeDraft('"+id+"')\">Suppr.</button></td></tr>";
+  }).join("");
+  document.getElementById("tbody2").innerHTML = rows || "<tr><td colspan=\"6\" class=\"loading-row\">Aucun brouillon pour le moment</td></tr>";
+}
+function removeDraft(id) {
+  if (!confirm("Supprimer ce brouillon ?")) return;
+  draftsDelete(id).then(function(){ delete DRAFTS[id]; renderDrafts(); renderMetrics(); toast("Brouillon supprime"); });
+}
+function renderMetrics() {
+  var devCount = RECIPES.filter(function(r){ return isLinkedToStore(r) === false; }).length;
+  var draftCount = Object.keys(DRAFTS).length;
+  document.getElementById("metrics").innerHTML =
+    "<div class=\"metric\"><div class=\"ml\">Recettes en dev (Inpulse)</div><div class=\"mv\">" + devCount + "</div></div>" +
+    "<div class=\"metric accent\"><div class=\"ml\">Brouillons R&D</div><div class=\"mv\">" + draftCount + "</div></div>" +
+    "<div class=\"metric\"><div class=\"ml\">Ingredients disponibles</div><div class=\"mv\">" + INGREDIENTS.length + "</div></div>";
+}
+function populateFlourOptions() {
+  var sel = document.getElementById("f-farine");
+  if (!sel) return;
+  sel.innerHTML = "<option value=\"\">-- choisir --</option>";
+  INGREDIENTS.filter(function(i){ return getIngName(i).toLowerCase().indexOf("farine") !== -1; }).forEach(function(i){
+    var o = document.createElement("option"); o.value = getIngName(i); o.textContent = getIngName(i); sel.appendChild(o);
+  });
+}
+function tryList(endpoints, i) {
+  if (i >= endpoints.length) return Promise.resolve([]);
+  return apiGet(endpoints[i], { max_per_page: 1000 }).then(function(resp){
+    var list = extractList(resp);
+    if (!list.length) return tryList(endpoints, i+1);
+    return list;
+  }).catch(function(){ return tryList(endpoints, i+1); });
+}
+function loadRecipes() { return tryList(RECIPE_ENDPOINTS, 0).then(function(l){ RECIPES = l; }); }
+function loadIngredients() { return tryList(ING_ENDPOINTS, 0).then(function(l){ INGREDIENTS = l; }); }
+function loadDrafts() { return draftsGetAll().then(function(d){ DRAFTS = d || {}; }); }
+function loadAll() {
+  document.getElementById("conn-txt").textContent = "Connexion a Inpulse...";
+  document.getElementById("dot").className = "dot spin";
+  Promise.all([loadRecipes(), loadIngredients(), loadDrafts()]).then(function(){
+    document.getElementById("dot").className = "dot ok";
+    document.getElementById("conn-txt").textContent = RECIPES.length + " recettes, " + INGREDIENTS.length + " ingredients charges";
+    renderMetrics(); renderDevRecipes(); renderDrafts();
+  }).catch(function(e){
+    document.getElementById("dot").className = "dot err";
+    document.getElementById("conn-txt").textContent = "Erreur de chargement: " + e.message;
+    renderDrafts(); renderMetrics();
+  });
+}
+function openCreate(id) {
+  currentDraftId = id || null;
+  var d = id ? DRAFTS[id] : null;
+  currentIngredients = d ? (d.ingredients || []).slice() : [];
+  var datalistOptions = INGREDIENTS.map(function(i){ return "<option value=\"" + escapeHtml(getIngName(i)) + "\">"; }).join("");
+  var html = "<div class=\"modal-bg\" onclick=\"if(event.target===this) closeModal()\">" +
+    "<div class=\"modal\">" +
+      "<div class=\"modal-h\"><h2>" + (d ? "Modifier la recette" : "Nouvelle recette R&D") + "</h2><button class=\"btn btn-sm\" onclick=\"closeModal()\">Fermer</button></div>" +
+      "<div class=\"grid3\">" +
+        "<div class=\"field\"><label>Nom de la recette</label><input type=\"text\" id=\"f-name\" value=\"" + escapeHtml(d?d.name:"") + "\"></div>" +
+        "<div class=\"field\"><label>Categorie</label><input type=\"text\" id=\"f-cat\" value=\"" + escapeHtml(d?d.category:"") + "\" placeholder=\"ex: SR - PATISSERIE\"></div>" +
+        "<div class=\"field\"><label>Farine utilisee</label><select id=\"f-farine\"></select></div>" +
+      "</div>" +
+      "<div class=\"grid3\">" +
+        "<div class=\"field\"><label>Qualite</label><select id=\"f-qualite\"><option>A definir</option><option>Standard</option><option>Bio</option><option>Premium</option><option>Local</option></select></div>" +
+        "<div class=\"field\"><label>Prix de vente TTC (\u20ac)</label><input type=\"number\" step=\"0.01\" id=\"f-price\" oninput=\"updateTotals()\" value=\"" + (d?d.salePrice:"") + "\"></div>" +
+        "<div class=\"field\"><label>Statut</label><select id=\"f-status\"><option value=\"dev\">En developpement</option><option value=\"ready\">Prete a tester</option></select></div>" +
+      "</div>" +
+      "<div class=\"field\"><label>Ingredients (nom, grammage en g, prix au kg en \u20ac)</label></div>" +
+      "<div id=\"ingRows\"></div>" +
+      "<button class=\"btn btn-sm\" type=\"button\" onclick=\"addIngRow()\"><i class=\"ti ti-plus\"></i> Ajouter un ingredient</button>" +
+      "<div style=\"margin-top:16px;padding:12px;background:var(--sur2);border-radius:var(--r)\">" +
+        "<div style=\"display:flex;justify-content:space-between;font-size:13px\"><span>Food cost brut</span><strong id=\"fc-eur\">0,00 \u20ac</strong></div>" +
+        "<div style=\"display:flex;justify-content:space-between;font-size:13px;margin-top:4px\"><span>Food cost %</span><strong id=\"fc-pct\">0,0 %</strong></div>" +
+        "<div class=\"foodcost-bar\"><div class=\"foodcost-fill\" id=\"fc-bar\" style=\"width:0%\"></div></div>" +
+      "</div>" +
+      "<div style=\"margin-top:16px;display:flex;gap:8px;justify-content:flex-end\">" +
+        "<button class=\"btn\" onclick=\"closeModal()\">Annuler</button>" +
+        "<button class=\"btn btn-primary\" onclick=\"saveDraft()\">Enregistrer le brouillon</button>" +
+      "</div>" +
+      "<datalist id=\"ingList\">" + datalistOptions + "</datalist>" +
+    "</div>" +
+  "</div>";
+  document.getElementById("modalRoot").innerHTML = html;
+  populateFlourOptions();
+  if (d && d.flour) document.getElementById("f-farine").value = d.flour;
+  if (d && d.quality) document.getElementById("f-qualite").value = d.quality;
+  if (d && d.status) document.getElementById("f-status").value = d.status;
+  if (!currentIngredients.length) currentIngredients.push({ name: "", grams: 0, costKg: 0 });
+  renderIngRows();
+}
+function renderIngRows() {
+  var el = document.getElementById("ingRows");
+  el.innerHTML = currentIngredients.map(function(row, idx){
+    return "<div class=\"ing-row\">" +
+      "<input type=\"text\" list=\"ingList\" placeholder=\"Ingredient\" value=\"" + escapeHtml(row.name||"") + "\" oninput=\"updateIngRow(" + idx + ",'name',this.value)\">" +
+      "<input type=\"number\" placeholder=\"Grammes\" value=\"" + (row.grams||"") + "\" oninput=\"updateIngRow(" + idx + ",'grams',this.value)\">" +
+      "<input type=\"number\" step=\"0.01\" placeholder=\"\u20ac / kg\" value=\"" + (row.costKg||"") + "\" oninput=\"updateIngRow(" + idx + ",'costKg',this.value)\">" +
+      "<div class=\"num\">" + fmtEUR((row.grams||0)/1000*(row.costKg||0)) + "</div>" +
+      "<button type=\"button\" class=\"rm\" onclick=\"removeIngRow(" + idx + ")\">&times;</button>" +
+    "</div>";
+  }).join("");
+  updateTotals();
+}
+function addIngRow() { currentIngredients.push({ name: "", grams: 0, costKg: 0 }); renderIngRows(); }
+function removeIngRow(idx) { currentIngredients.splice(idx,1); renderIngRows(); }
+function updateIngRow(idx, field, value) {
+  currentIngredients[idx][field] = (field === "name") ? value : Number(value);
+  if (field === "name") {
+    var match = INGREDIENTS.filter(function(i){ return getIngName(i).toLowerCase() === value.toLowerCase(); })[0];
+    if (match) currentIngredients[idx].costKg = getIngCostKg(match);
+  }
+  renderIngRows();
+}
+function updateTotals() {
+  var totalCost = currentIngredients.reduce(function(s,r){ return s + (r.grams||0)/1000*(r.costKg||0); }, 0);
+  var priceEl = document.getElementById("f-price");
+  var price = priceEl ? (Number(priceEl.value) || 0) : 0;
+  var pct = price ? (totalCost/price*100) : 0;
+  document.getElementById("fc-eur").textContent = fmtEUR(totalCost);
+  document.getElementById("fc-pct").textContent = fmtPct(pct);
+  var bar = document.getElementById("fc-bar");
+  bar.style.width = Math.min(pct,100) + "%";
+  bar.className = "foodcost-fill" + (pct>35?" bad":(pct>25?" warn":""));
+}
+function saveDraft() {
+  var totalCost = currentIngredients.reduce(function(s,r){ return s + (r.grams||0)/1000*(r.costKg||0); }, 0);
+  var price = Number(document.getElementById("f-price").value) || 0;
+  var pct = price ? (totalCost/price*100) : 0;
+  var name = document.getElementById("f-name").value;
+  if (!name) { toast("Merci d'indiquer un nom de recette"); return; }
+  var draft = {
+    id: currentDraftId || undefined,
+    name: name,
+    category: document.getElementById("f-cat").value,
+    flour: document.getElementById("f-farine").value,
+    quality: document.getElementById("f-qualite").value,
+    status: document.getElementById("f-status").value,
+    salePrice: price,
+    foodCostEur: totalCost,
+    foodCostPct: pct,
+    ingredients: currentIngredients
+  };
+  draftsSave(draft).then(function(resp){
+    var id = resp.id || draft.id;
+    DRAFTS[id] = draft;
+    closeModal();
+    renderDrafts();
+    renderMetrics();
+    toast("Brouillon enregistre");
+  });
+}
+function editDraft(id) { openCreate(id); }
+function closeModal() { document.getElementById("modalRoot").innerHTML = ""; }
+loadAll();
+</script>
+</body>
+</html>
