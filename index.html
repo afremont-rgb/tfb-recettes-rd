@@ -487,21 +487,21 @@ var pi = getPriceInfo(r);
 var pct = getFoodCostPct(r);
 var cls = fcClass(pct);
 var flag = getFlag(r, cost, pi, pct);
-var srcLbl = sourceLabel(pi);
+
 var optim = OPTIM_RESULTS[r.id];
 var hasOptim = optim && optim.length;
 return '<tr class="recipe-row' + (hasOptim ? ' row-optim' : '') + '" data-id="' + r.id + '">' +
 '<td class="tb name"><i class="ti ti-chevron-right exp-chev" id="chev-' + r.id + '"></i> ' + escapeHtml(getName(r)) + (hasOptim ? ' <span class="optim-pill" title="Alternative fournisseur moins chere disponible">eco</span>' : '') + '</td>' +
 '<td class="num">' + fmtEUR(cost) + '</td>' +
 '<td class="num">' + (pi ? fmtEUR(pi.ttc) : '—') + '</td>' +
-'<td>' + (srcLbl ? '<span class="tag-internal" title="' + escapeHtml(srcLbl) + '">' + escapeHtml(srcLbl.split(':')[0]) + '</span>' : '') + '</td>' +
+
 '<td class="num"><span class="fc-val ' + cls + '">' + (pct != null ? fmtPct(pct) : '—') + '</span></td>' +
-'<td>' + (flag ? '<span class="flag-pill" title="' + escapeHtml(flag) + '">!</span>' : '') + '</td>' +
+'<td style="text-align:center">' + (flag ? '<span class="flag-pill" title="' + escapeHtml(flag) + '">!</span>' : '') + '</td>' +
 '<td>' + (isActive(r) ? '<span class="pill ok">Active</span>' : '<span class="pill ko">Inactive</span>') + '</td>' +
 '</tr>';
 }).join('');
-return '<div class="tw"><table><colgroup><col style="width:34%"><col style="width:11%"><col style="width:12%"><col style="width:10%"><col style="width:11%"><col style="width:7%"><col style="width:12%"></colgroup>' +
-'<thead><tr><th>Nom</th><th>Cout total HT</th><th>Prix final TTC</th><th>Origine</th><th>Food cost brut</th><th>Alerte</th><th>Statut</th></tr></thead>' +
+return '<div class="tw"><table><colgroup><col style="width:38%"><col style="width:14%"><col style="width:14%"><col style="width:14%"><col style="width:8%"><col style="width:12%"></colgroup>' +
+'<thead><tr><th>Nom</th><th class="num">Cout total HT</th><th class="num">Prix final TTC</th><th class="num">Food cost brut</th><th style="text-align:center">Alerte</th><th>Statut</th></tr></thead>' +
 '<tbody>' + trs + '</tbody></table></div>';
 }
 
