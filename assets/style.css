@@ -145,3 +145,8 @@ tr:hover td{background:var(--sur2)}
 .ingr-row:hover td{background:#efece4}
 .ing-chev{display:inline-block;transition:transform .15s;color:var(--tx3);font-size:12px}
 .ingr-detail-row td{background:var(--gbg);padding:4px 0 8px}
+
+
+.icon-btn{background:none;border:none;cursor:pointer;color:var(--tx3);padding:4px 6px;border-radius:6px;font-size:14px;display:inline-flex;align-items:center;justify-content:center}
+.icon-btn:hover{background:#fee2e2;color:var(--red)}
+.hidden-item{display:flex;align-items:center;justify-content:space-between;gap:8px}
