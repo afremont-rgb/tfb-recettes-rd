@@ -150,3 +150,14 @@ function getBestSupplierOption(ing) {
     }
     return null;
 }
+
+function hiddenRecipeGetAll() {
+  return fetch("/api/hidden-recipes").then(function(r){ return r.json(); });
+}
+function hiddenRecipeSet(id, data) {
+  const body = Object.assign({ id: id }, data);
+  return fetch("/api/hidden-recipes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(function(r){ return r.json(); });
+}
+function hiddenRecipeDelete(id) {
+  return fetch("/api/hidden-recipes?id=" + encodeURIComponent(id), { method: "DELETE" }).then(function(r){ return r.json(); });
+}
