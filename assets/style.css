@@ -126,3 +126,22 @@ tr:hover td{background:var(--sur2)}
 
 .logo-img{height:26px;width:auto;display:block}
 @media(max-width:520px){.logo-img{height:20px}}
+
+
+.macro-cat{border-bottom:1px solid var(--bor)}
+.macro-cat:last-child{border-bottom:none}
+.macro-head{display:flex;align-items:center;gap:8px;padding:14px 16px;cursor:pointer;font-size:14px;font-weight:700;background:var(--sur2)}
+.macro-head:hover{background:#e9e6df}
+.macro-head .chev{transition:transform .15s;color:var(--tx3)}
+.macro-head.open .chev{transform:rotate(90deg)}
+.macro-head .macro-title{color:var(--tx)}
+.macro-head .cnt{font-weight:400;color:var(--tx3);font-size:12px;margin-left:2px}
+.macro-body{padding:4px 0 12px}
+.sub-block{margin:10px 16px}
+.sub-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--tx2);margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--bor)}
+.site-block{margin:6px 0 14px}
+.site-title{font-size:11px;font-weight:600;color:var(--gdark);background:var(--gbg);display:inline-block;padding:2px 8px;border-radius:12px;margin-bottom:6px}
+.ingr-row{cursor:pointer}
+.ingr-row:hover td{background:#efece4}
+.ing-chev{display:inline-block;transition:transform .15s;color:var(--tx3);font-size:12px}
+.ingr-detail-row td{background:var(--gbg);padding:4px 0 8px}
