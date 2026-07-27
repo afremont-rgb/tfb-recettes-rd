@@ -123,3 +123,6 @@ tr:hover td{background:var(--sur2)}
 .mp-manual{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
 .mp-manual input{width:120px}
 .tag-optim-detail{font-size:11px;color:#c2410c}
+
+.logo-img{height:26px;width:auto;display:block}
+@media(max-width:520px){.logo-img{height:20px}}
