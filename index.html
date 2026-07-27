@@ -132,7 +132,7 @@ function fetchJson(url) {
 }
 
 function getName(r) { return r.name || '(sans nom)'; }
-function getCategory(r) { return r.category || 'Sans categorie'; } function isCuissonStage(r) { return getCategory(r).toLowerCase().indexOf('cuisson') !== -1; }
+function getCategory(r) { return r.category || 'Sans categorie'; } function isCuissonStage(r) { var c = getCategory(r).toLowerCase(); return c.indexOf('cuisson') !== -1 || c.indexOf('sr -') === 0; }
 function isActive(r) { return r.status === 'active'; }
 function getUnitLabel(u) { if (!u) return ''; if (u === 'unit') return 'unite'; return u; }
 function getCostTotal(r) { return (Number(r.costOnSite) || 0) * (Number(r.quantity) || 1); }
