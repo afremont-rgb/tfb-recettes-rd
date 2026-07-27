@@ -25,3 +25,9 @@ from = "/api/price-override"
 to = "/.netlify/functions/price-override"
 status = 200
 force = true
+
+[[redirects]]
+from = "/api/hidden-recipes"
+to = "/.netlify/functions/hidden-recipes"
+status = 200
+force = true
