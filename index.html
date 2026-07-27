@@ -148,14 +148,14 @@ function ownPrice(r) {
 function buildNameGroups() {
   NAME_GROUPS = {};
   ALL.forEach(function (r) {
-    var k = normalizeName(getName(r));
+    var k = normApitic(getName(r));
     if (!NAME_GROUPS[k]) NAME_GROUPS[k] = [];
     NAME_GROUPS[k].push(r);
   });
 }
 
 function siblingPrice(r) {
-  var k = normalizeName(getName(r));
+  var k = normApitic(getName(r));
   var group = NAME_GROUPS[k] || [];
   for (var i = 0; i < group.length; i++) {
     if (group[i].id === r.id) continue;
