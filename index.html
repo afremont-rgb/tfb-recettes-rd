@@ -660,7 +660,7 @@ suggHtml = '<div class="mp-sugg"><i class="ti ti-bulb"></i> Suggestion Apitic : 
 } else {
 suggHtml = '<div class="mp-sugg"><i class="ti ti-alert-triangle"></i> Aucune correspondance Apitic trouvee automatiquement.</div>';
 }
-return '<div class="mp-item"><div class="mp-title">' + escapeHtml(getName(r)) + ' <span class="sm">(' + escapeHtml(getCategory(r)) + ')</span></div>' +
+return '<div class="mp-item"><div class="mp-head"><div class="mp-title" style="margin-bottom:0">' + escapeHtml(getName(r)) + ' <span class="sm">(' + escapeHtml(getCategory(r)) + ')</span></div><button class="icon-btn" data-action="delete-recipe" data-id="' + r.id + '" title="Masquer cette reference (ref inutilisable)"><i class="ti ti-trash"></i></button></div>' +
 suggHtml +
 '<div class="mp-manual"><input type="number" step="0.01" min="0" placeholder="Prix TTC (EUR)" class="mp-input" data-id="' + r.id + '"><button class="btn btn-sm btn-primary" data-action="save-manual" data-id="' + r.id + '">Enregistrer</button></div></div>';
 }).join('');
