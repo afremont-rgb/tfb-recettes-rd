@@ -1,905 +1,465 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TFB Recettes R&D</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
-<link rel="stylesheet" href="/assets/style.css">
-</head>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TFB Recettes R&D</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="/assets/style.css">
+  </head>
 <body>
-<nav class="topbar">
-<div class="topbar-l">
-<a href="/" class="logo"><img src="https://thefrenchbastards.fr/media/site/07b0334dcf-1732087927/header-logo-300x.png" alt="The French Bastards" class="logo-img"></a>
-<span class="badge">Food Cost R&D</span>
-<div class="pagenav">
-<a href="/" class="active">Recettes existantes</a>
-<a href="/developpement.html">R&D Developpement</a>
-</div>
-</div>
-<div class="topbar-r">
-<button class="btn btn-sm" onclick="loadAll(true)"><i class="ti ti-refresh"></i> Actualiser</button>
-</div>
-</nav>
-<div class="progresswrap" id="progresswrap">
-<div class="progresstxt" id="progresstxt">Chargement...</div>
-<div class="progressbar"><div class="progressfill" id="progressfill" style="width:0%"></div></div>
-<div class="progresstxt" id="progresspct">0%</div>
-</div>
-<div class="main">
-<div class="conn" id="conn">
-<div class="dot" id="dot"></div>
-<div style="flex:1;font-size:13px;color:var(--tx2)" id="conn-txt">Connexion a Inpulse...</div>
-</div>
-<div class="metrics" id="metrics"></div>
-<div class="filters">
-<div class="fg" id="statusFilter">
-<button class="fgb active" data-v="all">Toutes</button>
-<button class="fgb" data-v="active">Actives</button>
-<button class="fgb" data-v="inactive">Inactives</button>
-</div>
-<select id="catFilter"><option value="all">Toutes categories</option></select>
-<div class="sw"><i class="ti ti-search"></i><input class="si" id="search" type="text" placeholder="Rechercher une recette..."></div>
-</div>
-<div class="section">
-<div class="sh"><div class="st">Recettes par categorie</div><div class="sm" id="countTxt"></div></div>
-<div id="accordionWrap"><div class="loading-row">Chargement...</div></div>
-</div>
-<div class="section" id="mpSection">
-<div class="sh"><div class="st">Prix de vente a completer</div><div class="sm" id="mpCount"></div></div>
-<div class="mp-list" id="mpList"><div class="loading-row">Chargement...</div></div>
-</div>
-<div class="section" id="hiddenSection" style="display:none">
-<div class="sh"><div class="st">Recettes masquees</div><div class="sm" id="hiddenCount"></div></div>
-<div class="mp-list" id="hiddenList"></div>
-</div>
-<div class="section">
-<div class="sh"><div class="st">Catalogue Apitic</div><div class="sm" id="catalogInfo"></div></div>
-<div class="filters" style="padding:0 16px;margin:12px 0">
-<div class="fg" id="catalogStatusFilter">
-<button class="fgb active" data-v="all">Toutes</button>
-<button class="fgb" data-v="active">Vendues (60j)</button>
-<button class="fgb" data-v="inactive">Sans vente (60j)</button>
-</div>
-<div class="sw"><i class="ti ti-search"></i><input class="si" id="catalogSearch" type="text" placeholder="Rechercher une reference..."></div>
-</div>
-<div class="tw">
-<table>
-<thead><tr><th>Reference</th><th>Nom</th><th>Categorie</th><th>Prix TTC</th><th>Vendu au poids</th><th>Statut Apitic</th><th>Ventes (60j)</th></tr></thead>
-<tbody id="catalogBody"><tr><td colspan="7" class="loading-row">Chargement...</td></tr></tbody>
-</table>
-</div>
-</div>
-</div>
-<script src="/assets/app.js"></script>
-<script>
-var ENDPOINTS = { recipes: '/public/v2/recipes', products: '/public/v2/products', ingredients: '/public/v2/ingredients', supplierProducts: '/public/v2/supplier-products' };
-var ALL = [];
-var PRODUCTS_BY_ENTITY = {};
-var INGR_BY_ID = {};
-var SUPPRODUCT_BY_ID = {};
-var PRICE_OVERRIDES = {};
-var APITIC_CATALOG = [];
-var APITIC_SALES = null;
-var APITIC_SALES_NORM = {};
-var APITIC_SALES_STRIPPED = {};
-var HIDDEN_RECIPES = {};
-var NAME_GROUPS = {};
-var OPTIM_RESULTS = {};
-var DETAIL_CACHE = {};
-var RECIPE_DETAIL_DATA = {};
-var currentStatus = 'all';
-var catalogStatus = 'all';
-var COLLAPSED_MACRO = {};
-var LOAD_STEPS_TOTAL = 8;
-var LOAD_STEPS_DONE = 0;
-var OPTIM_SCAN_RUNNING = false;
-var CACHE_KEY = 'tfb_cache_v3';
-var CACHE_MAX_AGE = 24 * 60 * 60 * 1000;
-var MACRO_ORDER = ['Snacking', 'Patisserie', 'Viennoiserie', 'Pain', 'Boisson', 'Autres'];
-var MACRO_LABELS = { Snacking: 'Snacking', Patisserie: 'Patisseries', Viennoiserie: 'Viennoiseries', Pain: 'Pains', Boisson: 'Boissons', Autres: 'Sous-recettes & R&D' };
+  <nav class="topbar">
+    <div class="topbar-l">
+      <a href="/" class="logo"><img src="https://thefrenchbastards.fr/media/site/07b0334dcf-1732087927/header-logo-300x.png" alt="The French Bastards" class="logo-img"></a>a>
+      <span class="badge">Food Cost R&D</span>span>
+      <div class="pagenav">
+        <a href="/" class="active">Recettes existantes</a>a>
+        <a href="/developpement.html">R&D Developpement</a>a>
+      </div>div>
+    </div>div>
+    <div class="topbar-r">
+      <button class="btn btn-sm" onclick="loadAll(true)"><i class="ti ti-refresh"></i>i> Actualiser</button>button>
+    </div>div>
+  </nav>nav>
+  <div class="progresswrap" id="progresswrap">
+    <div class="progresstxt" id="progresstxt">Chargement...</div>div>
+    <div class="progressbar"><div class="progressfill" id="progressfill" style="width:0%"></div>div></div>div>
+    <div class="progresstxt" id="progresspct">0%</div>div>
+  </div>div>
+  <div class="main">
+    <div class="conn" id="conn">
+      <div class="dot" id="dot"></div>div>
+      <div style="flex:1;font-size:13px;color:var(--tx2)" id="conn-txt">Connexion a Inpulse...</div>div>
+    </div>div>
+    <div class="metrics" id="metrics"></div>div>
+    <div class="filters">
+      <div class="fg" id="statusFilter">
+        <button class="fgb active" data-v="all">Toutes</button>button>
+        <button class="fgb" data-v="active">Actives</button>button>
+        <button class="fgb" data-v="inactive">Inactives</button>button>
+      </div>div>
+      <select id="catFilter"><option value="all">Toutes categories</option>option></select>select>
+      <div class="sw"><i class="ti ti-search"></i>i><input class="si" id="search" type="text" placeholder="Rechercher une recette..."></div>div>
+    </div>div>
+    <div class="section">
+      <div class="sh"><div class="st">Recettes existantes par categorie</div>div><div class="sm" id="countTxt"></div>div></div>div>
+      <div id="accordionWrap"><div class="loading-row">Chargement...</div>div></div>div>
+    </div>div>
+    <div class="section" id="hiddenSection" style="display:none">
+      <div class="sh"><div class="st">Recettes masquees</div>div><div class="sm" id="hiddenCount"></div>div></div>div>
+      <div class="mp-list" id="hiddenList"></div>div>
+    </div>div>
+  </div>div>
+  <script src="/assets/app.js"></script>
+  <script>
+    var ALL = [];
+    var PRODUCTS_BY_ENTITY = {};
+    var INGR_BY_ID = {};
+    var SUPPRODUCT_BY_ID = {};
+    var HIDDEN_RECIPES = {};
+    var RECIPE_BY_ID = {};
+    var USERS_MAP = {};
+    var CLS_BY_ID = {};
+    var BUCKETS_BY_ID = {};
+    var currentStatus = 'all';
+    var COLLAPSED_MACRO = {};
+    var STATE = { DETAIL_CACHE: {}, RECIPE_DETAIL_DATA: {}, INGR_BY_ID: {}, SUPPRODUCT_BY_ID: {} };
+    var HELPERS = null;
 
-function updateProgress(pct, label) {
-var fill = document.getElementById('progressfill');
-var pctEl = document.getElementById('progresspct');
-var txt = document.getElementById('progresstxt');
-if (fill) fill.style.width = Math.max(0, Math.min(100, pct)) + '%';
-if (pctEl) pctEl.textContent = Math.round(pct) + '%';
-if (txt && label) txt.textContent = label;
-}
+    function updateProgress(pct, label) {
+      var fill = document.getElementById('progressfill');
+      var pctEl = document.getElementById('progresspct');
+      var txt = document.getElementById('progresstxt');
+      if (fill) fill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+      if (pctEl) pctEl.textContent = Math.round(pct) + '%';
+      if (txt && label) txt.textContent = label;
+    }
 
-function stepDone(label) {
-LOAD_STEPS_DONE++;
-updateProgress((LOAD_STEPS_DONE / LOAD_STEPS_TOTAL) * 90, label);
-}
+    function isUserHidden(r) { return !!(HIDDEN_RECIPES && HIDDEN_RECIPES[r.id] && HIDDEN_RECIPES[r.id].hidden); }
 
-function fetchAllPages(endpoint) {
-return apiGet(endpoint, { limit: 100, skip: 0 }).then(function (first) {
-var total = first.total || (first.data || []).length;
-var data = (first.data || []).slice();
-var calls = [];
-for (var skip = 100; skip < total; skip += 100) {
-calls.push(apiGet(endpoint, { limit: 100, skip: skip }));
-}
-if (!calls.length) return data;
-return Promise.all(calls).then(function (pages) {
-pages.forEach(function (p) { data = data.concat(p.data || []); });
-return data;
-});
-});
-}
+    function classifyAll() {
+      RECIPE_BY_ID = {};
+      ALL.forEach(function (r) { RECIPE_BY_ID[r.id] = r; });
+      CLS_BY_ID = {};
+      ALL.forEach(function (r) { CLS_BY_ID[r.id] = coreClassify(r, PRODUCTS_BY_ENTITY); });
+    }
 
-function fetchJson(url) {
-return fetch(url).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); });
-}
+    function computeBuckets() {
+      BUCKETS_BY_ID = {};
+      ALL.forEach(function (r) {
+        if (CLS_BY_ID[r.id] === 'sous-recette') {
+          BUCKETS_BY_ID[r.id] = coreUsageBuckets(r.id, USERS_MAP, RECIPE_BY_ID, PRODUCTS_BY_ENTITY);
+        }
+      });
+    }
 
-function getName(r) { return r.name || '(sans nom)'; }
-function getCategory(r) { return r.category || 'Sans categorie'; }
-function isCuissonStage(r) { var c = getCategory(r).toLowerCase(); return c.indexOf('cuisson') !== -1 || c.indexOf('sr -') === 0; }
-function isHiddenStage(r) {
-var cat = getCategory(r).toUpperCase();
-var name = ' ' + getName(r).toUpperCase() + ' ';
-if (cat.indexOf('CUISSON') !== -1) return true;
-if (cat.indexOf('R&D') !== -1) return true;
-if (cat.indexOf('SR -') === 0 || cat.indexOf('SR-') === 0) return true;
-if (name.indexOf(' CUISSON ') !== -1) return true;
-if (name.indexOf(' PCE ') !== -1) return true;
-if (name.indexOf(' CADRE ') !== -1) return true;
-if (name.indexOf(' LABORATOIRE ') !== -1) return true;
-if (cat === 'SANS CATEGORIE' && name.indexOf(' VTE ') === -1 && name.indexOf(' VENTE ') === -1) return true;
-return false;
-}
-function isUserHidden(r) { return !!(HIDDEN_RECIPES && HIDDEN_RECIPES[r.id] && HIDDEN_RECIPES[r.id].hidden); }
-function isVisible(r) { return !isHiddenStage(r) && !isUserHidden(r); }
-function getApiticQty60(r) {
-var direct = APITIC_SALES_NORM[normalizeName(getName(r))];
-if (direct != null) return Number(direct) || 0;
-var k = normApitic(getName(r));
-if (k && Object.prototype.hasOwnProperty.call(APITIC_SALES_STRIPPED, k)) return APITIC_SALES_STRIPPED[k];
-return null;
-}
-function isActive(r) {
-var qty = getApiticQty60(r);
-if (qty != null) return qty > 0;
-return r.status === 'active';
-}
-function getUnitLabel(u) { if (!u) return ''; if (u === 'unit') return 'unite'; return u; }
-function getCostTotal(r) { return (Number(r.costOnSite) || 0) * (Number(r.quantity) || 1); }
-function getProduct(r) { return PRODUCTS_BY_ENTITY[r.id] || null; }
+    function belongsExistante(r) {
+      var cls = CLS_BY_ID[r.id];
+      if (cls === 'existante') return true;
+      if (cls === 'sous-recette') return !!(BUCKETS_BY_ID[r.id] && BUCKETS_BY_ID[r.id].existante);
+      return false;
+    }
 
-function macroOf(r) {
-var c = getCategory(r).toUpperCase();
-if (c.indexOf('SR -') === 0 || c === 'R&D' || c === 'SANS CATEGORIE') return 'Autres';
-if (c.indexOf('SNACKING') !== -1) return 'Snacking';
-if (c.indexOf('PATISSERIE') !== -1) return 'Patisserie';
-if (c.indexOf('VIENNOISERIE') !== -1) return 'Viennoiserie';
-if (c.indexOf('BOULANGERIE') !== -1) return 'Pain';
-if (c.indexOf('BOISSON') !== -1) return 'Boisson';
-return 'Autres';
-}
+    function visibleList() {
+      return ALL.filter(function (r) { return belongsExistante(r) && !isUserHidden(r); });
+    }
 
-function siteOf(r) {
-var c = getCategory(r).toUpperCase();
-var n = getName(r).toUpperCase();
-if (c.indexOf('BORDEAUX') !== -1) return 'Bordeaux';
-if (n.indexOf('(BDX)') !== -1 || n.indexOf(' BDX') !== -1) return 'Bordeaux';
-return 'Paris';
-}
+    function getPriceInfo(r) { return coreOwnPrice(r, PRODUCTS_BY_ENTITY); }
+    function getCostTotal(r) { return coreGetCostTotal(r); }
+    function getFoodCostPct(r) { return coreGetFoodCostPct(r, PRODUCTS_BY_ENTITY); }
+    function isActive(r) { return coreIsActive(r); }
+    function isSousRecette(r) { return CLS_BY_ID[r.id] === 'sous-recette'; }
 
-function ownPrice(r) {
-var p = getProduct(r);
-if (!p || !p.priceWithTaxes) return null;
-var vat = Number(p.vatRate) || 0;
-return { ttc: p.priceWithTaxes, ht: p.priceWithTaxes / (1 + vat / 100), vat: vat };
-}
+    function fcClass(pct) {
+      if (pct == null) return '';
+      if (pct <= 25) return 'good';
+      if (pct <= 35) return 'warn';
+      return 'bad';
+    }
 
-function buildNameGroups() {
-NAME_GROUPS = {};
-ALL.forEach(function (r) {
-var k = normApitic(getName(r));
-if (!NAME_GROUPS[k]) NAME_GROUPS[k] = [];
-NAME_GROUPS[k].push(r);
-});
-}
+    function getFlag(r, cost, pi, pct) {
+      if (isSousRecette(r)) return null;
+      if (!pi) return 'Prix de vente manquant';
+      if (pct != null && pct > 60) return 'Prix a verifier';
+      if (cost === 0) return 'Composition manquante';
+      return null;
+    }
+    
+  </script>
+  function readCache() { return sharedReadCache(); }
 
-function siblingPrice(r) {
-var k = normApitic(getName(r));
-var group = NAME_GROUPS[k] || [];
-for (var i = 0; i < group.length; i++) {
-if (group[i].id === r.id) continue;
-var op = ownPrice(group[i]);
-if (op) return { info: op, siblingName: getName(group[i]) };
-}
-return null;
-}
+  function applyLoadedData(d) {
+  ALL = d.ALL || [];
+  PRODUCTS_BY_ENTITY = d.PRODUCTS_BY_ENTITY || {};
+  INGR_BY_ID = d.INGR_BY_ID || {};
+  SUPPRODUCT_BY_ID = d.SUPPRODUCT_BY_ID || {};
+  HIDDEN_RECIPES = d.HIDDEN_RECIPES || {};
+  USERS_MAP = d.USERS_MAP || {};
+  STATE.RECIPE_DETAIL_DATA = d.RECIPE_DETAIL_DATA || {};
+  STATE.INGR_BY_ID = INGR_BY_ID;
+  STATE.SUPPRODUCT_BY_ID = SUPPRODUCT_BY_ID;
+  HELPERS = coreMakeIngredientHelpers(STATE);
+  classifyAll();
+  computeBuckets();
+  }
 
-function apiticSuggestion(r) {
-if (!APITIC_CATALOG.length) return null;
-var target = normApitic(getName(r));
-if (!target) return null;
-var best = null;
-APITIC_CATALOG.forEach(function (p) {
-var n = normApitic(p.n);
-if (!n) return;
-var sc = (n === target) ? 1 : scoreMatch(target, n);
-if (!best || sc > best.score) best = { score: sc, item: p };
-});
-if (best && best.score >= 0.5) return best;
-return null;
-}
+  function fmtCacheAge(ts) {
+  var mins = Math.round((Date.now() - ts) / 60000);
+  if (mins < 60) return 'il y a ' + mins + ' min';
+    var hrs = Math.round(mins / 60);
+    if (hrs < 24) return 'il y a ' + hrs + ' h';
+      var days = Math.round(hrs / 24);
+      return 'il y a ' + days + ' j';
+      }
 
-function getPriceInfo(r) {
-var own = ownPrice(r);
-if (own) return Object.assign({ source: 'inpulse' }, own);
-var ov = PRICE_OVERRIDES[r.id];
-if (ov && ov.price) {
-var ttc = Number(ov.price);
-return { ttc: ttc, ht: ttc / 1.055, vat: 5.5, source: ov.source || 'manuel', overridden: true };
-}
-var sib = siblingPrice(r);
-if (sib) return Object.assign({ source: 'jumeau', siblingName: sib.siblingName }, sib.info);
-return null;
-}
+      function loadAll(force) {
+      var cached = !force ? readCache() : null;
+      if (cached && cached.USERS_MAP) {
+      applyLoadedData(cached);
+      document.getElementById('dot').className = 'dot ok';
+      document.getElementById('conn-txt').textContent = ALL.length + ' recettes (cache local, actualise ' + fmtCacheAge(cached._savedAt) + ')';
+      updateProgress(100, 'Cache local charge');
+      document.getElementById('progresswrap').classList.add('done');
+      populateCategories();
+      render();
+      renderHiddenList();
+      var age = Date.now() - cached._savedAt;
+      if (age > SHARED_CACHE_MAX_AGE) setTimeout(function () { fetchFresh(true); }, 400);
+      return;
+      }
+      fetchFresh(false);
+      }
 
-function getFoodCostPct(r) {
-if (isCuissonStage(r)) return null;
-var pi = getPriceInfo(r);
-if (!pi || !pi.ht) return null;
-var cost = getCostTotal(r);
-return (cost / pi.ht) * 100;
-}
+      function fetchFresh(silent) {
+      if (!silent) {
+      document.getElementById('conn-txt').textContent = 'Connexion a Inpulse...';
+      document.getElementById('dot').className = 'dot spin';
+      document.getElementById('progresswrap').classList.remove('done');
+      }
+      updateProgress(2, silent ? 'Actualisation en arriere-plan...' : 'Connexion...');
+      Promise.all([
+      fetchAllPages(ENDPOINTS.recipes),
+      fetchAllPages(ENDPOINTS.products),
+      fetchAllPages(ENDPOINTS.ingredients),
+      fetchAllPages(ENDPOINTS.supplierProducts),
+      hiddenRecipeGetAll().catch(function () { return {}; })
+      ]).then(function (results) {
+      ALL = results[0];
+      var products = results[1];
+      var ingredients = results[2];
+      var supplierProducts = results[3];
+      HIDDEN_RECIPES = results[4] || {};
+      PRODUCTS_BY_ENTITY = {};
+      products.forEach(function (p) { if (p.entityId) PRODUCTS_BY_ENTITY[p.entityId] = p; });
+      INGR_BY_ID = {};
+      ingredients.forEach(function (i) { INGR_BY_ID[i.id] = i; });
+      SUPPRODUCT_BY_ID = {};
+      supplierProducts.forEach(function (s) { SUPPRODUCT_BY_ID[s.id] = s; });
+      STATE = { DETAIL_CACHE: {}, RECIPE_DETAIL_DATA: {}, INGR_BY_ID: INGR_BY_ID, SUPPRODUCT_BY_ID: SUPPRODUCT_BY_ID };
+      HELPERS = coreMakeIngredientHelpers(STATE);
+      classifyAll();
+      document.getElementById('dot').className = 'dot ok';
+      document.getElementById('conn-txt').textContent = ALL.length + ' recettes chargees depuis Inpulse. Analyse des sous-recettes en cours...';
+      updateProgress(20, 'Analyse des sous-recettes...');
+      coreBuildUsageGraph(ALL, HELPERS.getRecipeDetail, function (done, total) {
+      updateProgress(20 + (done / total) * 75, 'Analyse des sous-recettes : ' + done + '/' + total);
+      }).then(function (usersMap) {
+      USERS_MAP = usersMap;
+      computeBuckets();
+      document.getElementById('conn-txt').textContent = ALL.length + ' recettes, ' + ingredients.length + ' ingredients, ' + supplierProducts.length + ' produits fournisseurs charges';
+      updateProgress(98, 'Construction de l affichage...');
+      populateCategories();
+      render();
+      renderHiddenList();
+      updateProgress(100, 'Pret');
+      sharedSaveCache({
+      ALL: ALL, PRODUCTS_BY_ENTITY: PRODUCTS_BY_ENTITY, INGR_BY_ID: INGR_BY_ID, SUPPRODUCT_BY_ID: SUPPRODUCT_BY_ID,
+      HIDDEN_RECIPES: HIDDEN_RECIPES, USERS_MAP: USERS_MAP, RECIPE_DETAIL_DATA: STATE.RECIPE_DETAIL_DATA
+      });
+      setTimeout(function () { document.getElementById('progresswrap').classList.add('done'); }, 900);
+      });
+      }).catch(function (e) {
+      if (!silent) {
+      document.getElementById('dot').className = 'dot err';
+      document.getElementById('conn-txt').textContent = 'Impossible de recuperer les donnees depuis Inpulse.';
+      document.getElementById('accordionWrap').innerHTML = '<div class="loading-row">Aucune donnee</div>div>';
+      updateProgress(100, 'Erreur');
+      }
+      });
+      }
 
-function fcClass(pct) {
-if (pct == null) return '';
-if (pct <= 25) return 'good';
-if (pct <= 35) return 'warn';
-return 'bad';
-}
+      function populateCategories() {
+      var cats = {};
+      visibleList().forEach(function (r) { cats[coreGetCategory(r)] = true; });
+      var sel = document.getElementById('catFilter');
+      var prev = sel.value;
+      sel.innerHTML = '<option value="all">Toutes categories</option>option>';
+      Object.keys(cats).sort().forEach(function (c) {
+      var o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o);
+      });
+      sel.value = prev && cats[prev] ? prev : 'all';
+      }
 
-function getFlag(r, cost, pi, pct) {
-if (isCuissonStage(r)) return null;
-if (!pi) return 'Prix de vente manquant';
-if (pct != null && pct > 60) return 'Prix a verifier';
-if (cost === 0) return 'Composition manquante';
-return null;
-}
+      function buildGroups(list) {
+      var g = {};
+      CORE_MACRO_ORDER.forEach(function (m) { g[m] = { active: { Paris: [], Bordeaux: [] }, inactive: { Paris: [], Bordeaux: [] } }; });
+      list.forEach(function (r) {
+      var m = coreMacroOf(r);
+      var st = isActive(r) ? 'active' : 'inactive';
+      var site = coreSiteOf(r);
+      if (!g[m][st][site]) g[m][st][site] = [];
+      g[m][st][site].push(r);
+      });
+      return g;
+      }
 
-function sourceLabel(pi) {
-if (!pi || pi.source === 'inpulse') return null;
-if (pi.source === 'jumeau') return 'jumeau: ' + pi.siblingName;
-return pi.source || 'manuel';
-}
+      document.addEventListener('click', function (e) {
+      var b = e.target.closest('#statusFilter .fgb');
+      if (b) {
+      document.querySelectorAll('#statusFilter .fgb').forEach(function (x) { x.classList.remove('active'); });
+      b.classList.add('active');
+      currentStatus = b.dataset.v;
+      render();
+      return;
+      }
+      var macroHead = e.target.closest('.macro-head');
+      if (macroHead) {
+      var m = macroHead.dataset.macro;
+      COLLAPSED_MACRO[m] = (COLLAPSED_MACRO[m] === false) ? true : false;
+      render();
+      return;
+      }
+      var delBtn = e.target.closest('[data-action="delete-recipe"]');
+      if (delBtn) {
+      var did = delBtn.dataset.id;
+      var rec = RECIPE_BY_ID[did];
+      var recName = rec ? coreGetName(rec) : 'cette recette';
+      if (!confirm('Masquer "' + recName + '" de ce tableau de bord ? Cela ne supprime rien dans Inpulse : la recette reste intacte dans votre logiciel de recettes, elle disparait uniquement de cet outil de suivi. Vous pourrez la restaurer a tout moment depuis la section Recettes masquees.')) return;
+      hiddenRecipeSet(did, { hidden: true, name: recName }).then(function () {
+      HIDDEN_RECIPES[did] = { hidden: true, name: recName };
+      render(); renderHiddenList();
+      }).catch(function () { toast('Erreur lors du masquage'); });
+      return;
+      }
+      var restoreBtn = e.target.closest('[data-action="restore-recipe"]');
+      if (restoreBtn) {
+      var rid = restoreBtn.dataset.id;
+      hiddenRecipeDelete(rid).then(function () {
+      delete HIDDEN_RECIPES[rid];
+      render(); renderHiddenList();
+      }).catch(function () { toast('Erreur'); });
+      return;
+      }
+      var recRow = e.target.closest('.recipe-row');
+      if (recRow) {
+      toggleRecipe(recRow.dataset.id);
+      return;
+      }
+      });
 
-function readCache() {
-try {
-var raw = localStorage.getItem(CACHE_KEY);
-if (!raw) return null;
-var obj = JSON.parse(raw);
-if (!obj || !obj._savedAt) return null;
-return obj;
-} catch (e) { return null; }
-}
+      function renderRecipeTable(rows) {
+      var trs = rows.map(function (r) {
+      var cost = getCostTotal(r);
+      var pi = getPriceInfo(r);
+      var pct = getFoodCostPct(r);
+      var cls = fcClass(pct);
+      var flag = getFlag(r, cost, pi, pct);
+      var sousTag = isSousRecette(r) ? ' <span class="tag-internal">sous-recette</span>span>' : '';
+      return '<tr class="recipe-row" data-id="' + r.id + '">' +
+        '<td class="tb name"><i class="ti ti-chevron-right exp-chev" id="chev-' + r.id + '"></i>i> ' + escapeHtml(coreGetName(r)) + sousTag + '</td>td>' +
+        '<td class="num">' + fmtEUR(cost) + '</td>td>' +
+        '<td class="num">' + (pi ? fmtEUR(pi.ttc) : '\u2014') + '</td>td>' +
+        '<td class="num"><span class="fc-val ' + cls + '">' + (pct != null ? fmtPct(pct) : '\u2014') + '</span>span></td>td>' +
+        '<td style="text-align:center">' + (flag ? '<span class="flag-pill" title="' + escapeHtml(flag) + '">!</span>span>' : '') + '</td>td>' +
+        '<td>' + (isActive(r) ? '<span class="pill ok">Active</span>span>' : '<span class="pill ko">Inactive</span>span>') + '</td>' +
+    '<td style="text-align:center"><button class="icon-btn" data-action="delete-recipe" data-id="' + r.id + '" title="Masquer cette recette de la vue"><i class="ti ti-trash"></i>i></button>button></td>' +
+    '</tr>tr>';
+    }).join('');
+    return '<div class="tw"><table><colgroup><col style="width:34%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:7%"><col style="width:11%"><col style="width:9%"></colgroup>' +
+    '<thead><tr><th>Nom</th><th class="num">Cout global HT</th><th class="num">Prix final TTC</th><th class="num">Food cost</th><th style="text-align:center">Alerte</th><th>Statut</th><th style="text-align:center">Actions</th></tr></thead>' +
+    '<tbody>' + trs + '</tbody></table></div>div>';
+    }
+    
+    function render() {
+    var status = currentStatus;
+    var cat = document.getElementById('catFilter').value;
+    var q = document.getElementById('search').value.toLowerCase();
+    var base = visibleList();
+    var filtered = base.filter(function (r) {
+    var active = isActive(r);
+    if (status === 'active' && !active) return false;
+    if (status === 'inactive' && active) return false;
+    if (cat !== 'all' && coreGetCategory(r) !== cat) return false;
+    if (q && coreGetName(r).toLowerCase().indexOf(q) === -1) return false;
+    return true;
+    });
+    document.getElementById('countTxt').textContent = filtered.length + ' / ' + base.length;
+    var groups = buildGroups(filtered);
+    var html = '';
+    CORE_MACRO_ORDER.forEach(function (m) {
+    var g = groups[m];
+    var total = g.active.Paris.length + g.active.Bordeaux.length + g.inactive.Paris.length + g.inactive.Bordeaux.length;
+    if (!total) return;
+    var collapsed = COLLAPSED_MACRO[m] !== false;
+    html += '<div class="macro-cat">';
+    html += '<div class="macro-head' + (collapsed ? '' : ' open') + '" data-macro="' + m + '"><i class="ti ti-chevron-right chev"></i>i><span class="macro-title">' + escapeHtml(CORE_MACRO_LABELS[m]) + '</span>span><span class="cnt">(' + total + ' recette' + (total > 1 ? 's' : '') + ')</span>span></div>div>';
+    html += '<div class="macro-body" style="display:' + (collapsed ? 'none' : 'block') + '">';
+    ['active', 'inactive'].forEach(function (st) {
+    var stLabel = st === 'active' ? 'Actives' : 'Inactives';
+    var stTotal = g[st].Paris.length + g[st].Bordeaux.length;
+    if (!stTotal) return;
+    html += '<div class="sub-block"><div class="sub-title">' + stLabel + ' (' + stTotal + ')</div>div>';
+    ['Paris', 'Bordeaux'].forEach(function (site) {
+    var rows = g[st][site];
+    if (!rows.length) return;
+    rows.sort(function (a, b) { return coreGetName(a).localeCompare(coreGetName(b)); });
+    html += '<div class="site-block"><span class="site-title">' + site + ' (' + rows.length + ')</span>span>' + renderRecipeTable(rows) + '</div>div>';
+    });
+    html += '</div>div>';
+    });
+    html += '</div>div></div>div>';
+    });
+    document.getElementById('accordionWrap').innerHTML = html || '<div class="loading-row">Aucune recette ne correspond aux filtres</div>div>';
+    renderMetrics();
+    }
 
-function saveCache() {
-try {
-var payload = {
-_savedAt: Date.now(),
-ALL: ALL,
-PRODUCTS_BY_ENTITY: PRODUCTS_BY_ENTITY,
-INGR_BY_ID: INGR_BY_ID,
-SUPPRODUCT_BY_ID: SUPPRODUCT_BY_ID,
-PRICE_OVERRIDES: PRICE_OVERRIDES,
-APITIC_CATALOG: APITIC_CATALOG,
-APITIC_SALES: APITIC_SALES,
-RECIPE_DETAIL_DATA: RECIPE_DETAIL_DATA,
-OPTIM_RESULTS: OPTIM_RESULTS,
-HIDDEN_RECIPES: HIDDEN_RECIPES
-};
-localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
-} catch (e) { }
-}
+      function renderMetrics() {
+      var base = visibleList();
+      var total = base.length;
+      var actives = base.filter(isActive).length;
+      var inactives = total - actives;
+      var cats = {}; base.forEach(function (r) { cats[coreGetCategory(r)] = true; });
+      var sousCount = base.filter(isSousRecette).length;
+      var flagged = 0;
+      var pcts = [];
+      base.forEach(function (r) {
+      var cost = getCostTotal(r);
+      var pi = getPriceInfo(r);
+      var pct = getFoodCostPct(r);
+      if (pct != null) pcts.push(pct);
+      if (getFlag(r, cost, pi, pct)) flagged++;
+      });
+      var avgPct = pcts.length ? (pcts.reduce(function (s, v) { return s + v; }, 0) / pcts.length) : 0;
+      document.getElementById('metrics').innerHTML =
+      '<div class="metric"><div class="ml">Recettes existantes</div>div><div class="mv">' + total + '</div>div></div>div>' +
+      '<div class="metric accent"><div class="ml">Actives</div>div><div class="mv">' + actives + '</div>div></div>div>' +
+      '<div class="metric"><div class="ml">Inactives</div>div><div class="mv">' + inactives + '</div>div></div>div>' +
+      '<div class="metric"><div class="ml">Categories</div>div><div class="mv">' + Object.keys(cats).length + '</div>div></div>div>' +
+      '<div class="metric"><div class="ml">Sous-recettes utilisees</div>div><div class="mv">' + sousCount + '</div>div></div>div>' +
+      '<div class="metric"><div class="ml">Food cost moyen</div>div><div class="mv">' + fmtPct(avgPct) + '</div>div></div>div>' +
+      '<div class="metric' + (flagged ? ' warn-metric' : '') + '"><div class="ml">A verifier</div>div><div class="mv">' + flagged + '</div>div></div>div>';
+      }
 
-function applyLoadedData(d) {
-ALL = d.ALL || [];
-PRODUCTS_BY_ENTITY = d.PRODUCTS_BY_ENTITY || {};
-INGR_BY_ID = d.INGR_BY_ID || {};
-SUPPRODUCT_BY_ID = d.SUPPRODUCT_BY_ID || {};
-PRICE_OVERRIDES = d.PRICE_OVERRIDES || {};
-APITIC_CATALOG = d.APITIC_CATALOG || [];
-APITIC_SALES = d.APITIC_SALES || null;
-RECIPE_DETAIL_DATA = d.RECIPE_DETAIL_DATA || {};
-OPTIM_RESULTS = d.OPTIM_RESULTS || {};
-HIDDEN_RECIPES = d.HIDDEN_RECIPES || {};
-buildNameGroups();
-buildApiticSalesIndex();
-}
+      function renderHiddenList() {
+      var ids = Object.keys(HIDDEN_RECIPES || {}).filter(function (id) { return HIDDEN_RECIPES[id] && HIDDEN_RECIPES[id].hidden; });
+      var sec = document.getElementById('hiddenSection');
+      if (!sec) return;
+      if (!ids.length) { sec.style.display = 'none'; return; }
+      sec.style.display = '';
+      document.getElementById('hiddenCount').textContent = ids.length + ' recette' + (ids.length > 1 ? 's' : '') + ' masquee' + (ids.length > 1 ? 's' : '');
+      var html2 = ids.map(function (id) {
+      var rec = RECIPE_BY_ID[id];
+      var nm = rec ? coreGetName(rec) : (HIDDEN_RECIPES[id].name || id);
+      return '<div class="mp-item hidden-item"><div class="mp-title" style="margin-bottom:0">' + escapeHtml(nm) + '</div>div><button class="btn btn-sm" data-action="restore-recipe" data-id="' + id + '">Restaurer</button>button></div>div>';
+      }).join('');
+      document.getElementById('hiddenList').innerHTML = html2;
+      }
 
-function fmtCacheAge(ts) {
-var mins = Math.round((Date.now() - ts) / 60000);
-if (mins < 60) return 'il y a ' + mins + ' min';
-var hrs = Math.round(mins / 60);
-if (hrs < 24) return 'il y a ' + hrs + ' h';
-var days = Math.round(hrs / 24);
-return 'il y a ' + days + ' j';
-}
+      function toggleRecipe(id) {
+      var row = document.querySelector('.recipe-row[data-id="' + id + '"]');
+      if (!row) return;
+      var next = row.nextElementSibling;
+      var chev = document.getElementById('chev-' + id);
+      if (next && next.classList.contains('expand-row')) {
+      next.remove();
+      if (chev) chev.className = 'ti ti-chevron-right exp-chev';
+      return;
+      }
+      document.querySelectorAll('.expand-row').forEach(function (n) { n.remove(); });
+      document.querySelectorAll('.exp-chev').forEach(function (c) { c.className = 'ti ti-chevron-right exp-chev'; });
+      if (chev) chev.className = 'ti ti-chevron-down exp-chev';
+      var tr = document.createElement('tr');
+      tr.className = 'expand-row';
+      tr.innerHTML = '<td colspan="7"><div class="exp-wrap"><div class="loading-row">Chargement des ingredients...</div>div></div>div></td>td>';
+      row.parentNode.insertBefore(tr, row.nextSibling);
+      var r = RECIPE_BY_ID[id];
+      HELPERS.getFlatIngredients(r).then(function (rows) {
+      tr.querySelector('.exp-wrap').innerHTML = buildExpandHtml(r, rows);
+      }).catch(function () {
+      tr.querySelector('.exp-wrap').innerHTML = '<div class="loading-row">Erreur de chargement des ingredients</div>div>';
+      });
+      }
 
-function loadAll(force) {
-var cached = !force ? readCache() : null;
-if (cached) {
-applyLoadedData(cached);
-document.getElementById('dot').className = 'dot ok';
-document.getElementById('conn-txt').textContent = ALL.length + ' recettes (cache local, actualise ' + fmtCacheAge(cached._savedAt) + ')';
-updateProgress(100, 'Cache local charge');
-document.getElementById('progresswrap').classList.add('done');
-populateCategories();
-render();
-renderMissingPrices();
-renderApiticCatalog();
-renderHiddenList();
-var age = Date.now() - cached._savedAt;
-if (age > CACHE_MAX_AGE) setTimeout(function () { fetchFresh(true); }, 400);
-return;
-}
-fetchFresh(false);
-}
-
-function fetchFresh(silent) {
-if (!silent) {
-document.getElementById('conn-txt').textContent = 'Connexion a Inpulse...';
-document.getElementById('dot').className = 'dot spin';
-document.getElementById('progresswrap').classList.remove('done');
-}
-LOAD_STEPS_DONE = 0;
-updateProgress(2, silent ? 'Actualisation quotidienne en arriere-plan...' : 'Connexion...');
-function track(p, label) { return p.then(function (v) { stepDone(label); return v; }); }
-Promise.all([
-track(fetchAllPages(ENDPOINTS.recipes), 'Recettes chargees'),
-track(fetchAllPages(ENDPOINTS.products), 'Produits Inpulse charges'),
-track(fetchAllPages(ENDPOINTS.ingredients), 'Ingredients charges'),
-track(fetchAllPages(ENDPOINTS.supplierProducts), 'Produits fournisseurs charges'),
-track(priceOverrideGetAll().catch(function () { return {}; }), 'Prix manuels charges'),
-track(hiddenRecipeGetAll().catch(function () { return {}; }), 'Recettes masquees chargees'),
-track(fetchJson('/assets/apitic-prices.json').catch(function () { return []; }), 'Catalogue Apitic charge'),
-track(fetchJson('/assets/apitic-sales-60d.json').catch(function () { return null; }), 'Ventes Apitic 60j chargees')
-]).then(function (results) {
-ALL = results[0];
-var products = results[1];
-var ingredients = results[2];
-var supplierProducts = results[3];
-PRICE_OVERRIDES = results[4] || {};
-HIDDEN_RECIPES = results[5] || {};
-APITIC_CATALOG = results[6] || [];
-APITIC_SALES = results[7] || null;
-PRODUCTS_BY_ENTITY = {};
-products.forEach(function (p) { if (p.entityId) PRODUCTS_BY_ENTITY[p.entityId] = p; });
-INGR_BY_ID = {};
-ingredients.forEach(function (i) { INGR_BY_ID[i.id] = i; });
-SUPPRODUCT_BY_ID = {};
-supplierProducts.forEach(function (s) { SUPPRODUCT_BY_ID[s.id] = s; });
-RECIPE_DETAIL_DATA = {};
-DETAIL_CACHE = {};
-OPTIM_RESULTS = {};
-buildNameGroups();
-buildApiticSalesIndex();
-document.getElementById('dot').className = 'dot ok';
-document.getElementById('conn-txt').textContent = ALL.length + ' recettes, ' + ingredients.length + ' ingredients, ' + supplierProducts.length + ' produits fournisseurs charges';
-updateProgress(95, 'Construction de l affichage...');
-populateCategories();
-render();
-renderMissingPrices();
-renderApiticCatalog();
-renderHiddenList();
-updateProgress(100, 'Pret');
-saveCache();
-setTimeout(function () { document.getElementById('progresswrap').classList.add('done'); }, 900);
-setTimeout(startOptimScan, 600);
-}).catch(function (e) {
-if (!silent) {
-document.getElementById('dot').className = 'dot err';
-document.getElementById('conn-txt').textContent = 'Impossible de recuperer les donnees depuis Inpulse.';
-document.getElementById('accordionWrap').innerHTML = '<div class="loading-row">Aucune donnee</div>';
-updateProgress(100, 'Erreur');
-}
-});
-}
-
-function buildApiticSalesIndex() {
-APITIC_SALES_NORM = {};
-APITIC_SALES_STRIPPED = {};
-if (APITIC_SALES && APITIC_SALES.salesByName) {
-Object.keys(APITIC_SALES.salesByName).forEach(function (k) {
-var qty = APITIC_SALES.salesByName[k];
-APITIC_SALES_NORM[normalizeName(k)] = qty;
-var sk = normApitic(k);
-APITIC_SALES_STRIPPED[sk] = (APITIC_SALES_STRIPPED[sk] || 0) + (Number(qty) || 0);
-});
-}
-}
-
-function apiticIsActive60(item) {
-var qty = APITIC_SALES_NORM[normalizeName(item.n)];
-return (qty || 0) > 0;
-}
-
-function populateCategories() {
-var cats = {};
-ALL.forEach(function (r) { cats[getCategory(r)] = true; });
-var sel = document.getElementById('catFilter');
-sel.innerHTML = '<option value="all">Toutes categories</option>';
-Object.keys(cats).sort().forEach(function (c) {
-var o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o);
-});
-}
-
-function buildGroups(list) {
-var g = {};
-MACRO_ORDER.forEach(function (m) { g[m] = { active: { Paris: [], Bordeaux: [] }, inactive: { Paris: [], Bordeaux: [] } }; });
-list.forEach(function (r) {
-var m = macroOf(r);
-var st = isActive(r) ? 'active' : 'inactive';
-var site = siteOf(r);
-if (!g[m][st][site]) g[m][st][site] = [];
-g[m][st][site].push(r);
-});
-return g;
-}
-
-document.addEventListener('click', function (e) {
-var b = e.target.closest('#statusFilter .fgb');
-if (b) {
-document.querySelectorAll('#statusFilter .fgb').forEach(function (x) { x.classList.remove('active'); });
-b.classList.add('active');
-currentStatus = b.dataset.v;
-render();
-return;
-}
-var cb = e.target.closest('#catalogStatusFilter .fgb');
-if (cb) {
-document.querySelectorAll('#catalogStatusFilter .fgb').forEach(function (x) { x.classList.remove('active'); });
-cb.classList.add('active');
-catalogStatus = cb.dataset.v;
-renderApiticCatalog();
-return;
-}
-var macroHead = e.target.closest('.macro-head');
-if (macroHead) {
-var m = macroHead.dataset.macro;
-COLLAPSED_MACRO[m] = (COLLAPSED_MACRO[m] === false) ? true : false;
-render();
-return;
-}
-var applyBtn = e.target.closest('[data-action="apply-sugg"]');
-if (applyBtn) {
-var id = applyBtn.dataset.id;
-var price = Number(applyBtn.dataset.price);
-var src = applyBtn.dataset.src;
-applyBtn.disabled = true;
-priceOverrideSet(id, { price: price, source: src }).then(function () {
-PRICE_OVERRIDES[id] = { price: price, source: src };
-toast('Prix enregistre');
-render(); renderMissingPrices(); saveCache();
-}).catch(function () { toast('Erreur de sauvegarde'); applyBtn.disabled = false; });
-return;
-}
-var saveBtn = e.target.closest('[data-action="save-manual"]');
-if (saveBtn) {
-var mid = saveBtn.dataset.id;
-var input = document.querySelector('.mp-input[data-id="' + mid + '"]');
-var val = input ? Number(input.value) : 0;
-if (!val || val <= 0) { toast('Merci de saisir un prix valide'); return; }
-priceOverrideSet(mid, { price: val, source: 'manuel' }).then(function () {
-PRICE_OVERRIDES[mid] = { price: val, source: 'manuel' };
-toast('Prix enregistre');
-render(); renderMissingPrices(); saveCache();
-}).catch(function () { toast('Erreur de sauvegarde'); });
-return;
-}
-var delBtn = e.target.closest('[data-action="delete-recipe"]');
-if (delBtn) {
-var did = delBtn.dataset.id;
-var rec = ALL.filter(function (x) { return x.id === did; })[0];
-var recName = rec ? getName(rec) : 'cette recette';
-if (!confirm('Masquer "' + recName + '" de ce tableau de bord ? Cela ne supprime rien dans Inpulse : la recette reste intacte dans votre logiciel de recettes, elle disparait uniquement de cet outil de suivi. Vous pourrez la restaurer a tout moment depuis la section Recettes masquees.')) return;
-hiddenRecipeSet(did, { hidden: true, name: recName }).then(function () {
-HIDDEN_RECIPES[did] = { hidden: true, name: recName };
-toast('Recette masquee');
-render(); renderMissingPrices(); renderHiddenList(); saveCache();
-}).catch(function () { toast('Erreur lors du masquage'); });
-return;
-}
-var restoreBtn = e.target.closest('[data-action="restore-recipe"]');
-if (restoreBtn) {
-var rid = restoreBtn.dataset.id;
-hiddenRecipeDelete(rid).then(function () {
-delete HIDDEN_RECIPES[rid];
-toast('Recette restauree');
-render(); renderMissingPrices(); renderHiddenList(); saveCache();
-}).catch(function () { toast('Erreur'); });
-return;
-}
-var ingRow = e.target.closest('.ingr-row[data-ing]');
-if (ingRow) {
-var next = ingRow.nextElementSibling;
-if (next && next.classList.contains('ingr-detail-row')) {
-next.remove();
-var ch = ingRow.querySelector('.ing-chev');
-if (ch) ch.className = 'ti ti-chevron-right ing-chev';
-return;
-}
-document.querySelectorAll('.ingr-detail-row').forEach(function (n) { n.remove(); });
-document.querySelectorAll('.ing-chev').forEach(function (c) { c.className = 'ti ti-chevron-right ing-chev'; });
-var ch2 = ingRow.querySelector('.ing-chev');
-if (ch2) ch2.className = 'ti ti-chevron-down ing-chev';
-var tr2 = document.createElement('tr');
-tr2.className = 'ingr-detail-row';
-tr2.innerHTML = '<td colspan="5">' + buildIngredientDetailHtml(ingRow.dataset.ing) + '</td>';
-ingRow.parentNode.insertBefore(tr2, ingRow.nextSibling);
-return;
-}
-var recRow = e.target.closest('.recipe-row');
-if (recRow) {
-toggleRecipe(recRow.dataset.id);
-return;
-}
-});
-
-function renderRecipeTable(rows) {
-var trs = rows.map(function (r) {
-var cost = getCostTotal(r);
-var pi = getPriceInfo(r);
-var pct = getFoodCostPct(r);
-var cls = fcClass(pct);
-var flag = getFlag(r, cost, pi, pct);
-
-var optim = OPTIM_RESULTS[r.id];
-var hasOptim = optim && optim.length;
-return '<tr class="recipe-row' + (hasOptim ? ' row-optim' : '') + '" data-id="' + r.id + '">' +
-'<td class="tb name"><i class="ti ti-chevron-right exp-chev" id="chev-' + r.id + '"></i> ' + escapeHtml(getName(r)) + (hasOptim ? ' <span class="optim-pill" title="Alternative fournisseur moins chere disponible">eco</span>' : '') + '</td>' +
-'<td class="num">' + fmtEUR(cost) + '</td>' +
-'<td class="num">' + (pi ? fmtEUR(pi.ttc) : '—') + '</td>' +
-
-'<td class="num"><span class="fc-val ' + cls + '">' + (pct != null ? fmtPct(pct) : '—') + '</span></td>' +
-'<td style="text-align:center">' + (flag ? '<span class="flag-pill" title="' + escapeHtml(flag) + '">!</span>' : '') + '</td>' +
-'<td>' + (isActive(r) ? '<span class="pill ok">Active</span>' : '<span class="pill ko">Inactive</span>') + '</td>' +
-'<td style="text-align:center"><button class="icon-btn" data-action="delete-recipe" data-id="' + r.id + '" title="Supprimer cette recette de la vue"><i class="ti ti-trash"></i></button></td>' +
-'</tr>';
-}).join('');
-return '<div class="tw"><table><colgroup><col style="width:34%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:7%"><col style="width:11%"><col style="width:9%"></colgroup>' +
-'<thead><tr><th>Nom</th><th class="num">Cout total HT</th><th class="num">Prix final TTC</th><th class="num">Food cost brut</th><th style="text-align:center">Alerte</th><th>Statut</th><th style="text-align:center">Actions</th></tr></thead>' +
-'<tbody>' + trs + '</tbody></table></div>';
-}
-
-function render() {
-var status = currentStatus;
-var cat = document.getElementById('catFilter').value;
-var q = document.getElementById('search').value.toLowerCase();
-var visibleAll = ALL.filter(isVisible);
-var filtered = visibleAll.filter(function (r) {
-var active = isActive(r);
-if (status === 'active' && !active) return false;
-if (status === 'inactive' && active) return false;
-if (cat !== 'all' && getCategory(r) !== cat) return false;
-if (q && getName(r).toLowerCase().indexOf(q) === -1) return false;
-return true;
-});
-document.getElementById('countTxt').textContent = filtered.length + ' / ' + visibleAll.length;
-var groups = buildGroups(filtered);
-var html = '';
-MACRO_ORDER.forEach(function (m) {
-var g = groups[m];
-var total = g.active.Paris.length + g.active.Bordeaux.length + g.inactive.Paris.length + g.inactive.Bordeaux.length;
-if (!total) return;
-var collapsed = COLLAPSED_MACRO[m] !== false;
-html += '<div class="macro-cat">';
-html += '<div class="macro-head' + (collapsed ? '' : ' open') + '" data-macro="' + m + '"><i class="ti ti-chevron-right chev"></i><span class="macro-title">' + escapeHtml(MACRO_LABELS[m]) + '</span><span class="cnt">(' + total + ' recette' + (total > 1 ? 's' : '') + ')</span></div>';
-html += '<div class="macro-body" style="display:' + (collapsed ? 'none' : 'block') + '">';
-['active', 'inactive'].forEach(function (st) {
-var stLabel = st === 'active' ? 'Actives' : 'Inactives';
-var stTotal = g[st].Paris.length + g[st].Bordeaux.length;
-if (!stTotal) return;
-html += '<div class="sub-block"><div class="sub-title">' + stLabel + ' (' + stTotal + ')</div>';
-['Paris', 'Bordeaux'].forEach(function (site) {
-var rows = g[st][site];
-if (!rows.length) return;
-rows.sort(function (a, b) { return getName(a).localeCompare(getName(b)); });
-html += '<div class="site-block"><span class="site-title">' + site + ' (' + rows.length + ')</span>' + renderRecipeTable(rows) + '</div>';
-});
-html += '</div>';
-});
-html += '</div></div>';
-});
-document.getElementById('accordionWrap').innerHTML = html || '<div class="loading-row">Aucune recette ne correspond aux filtres</div>';
-renderMetrics();
-}
-
-function renderMetrics() {
-var visibleAll = ALL.filter(isVisible);
-var total = visibleAll.length;
-var actives = visibleAll.filter(isActive).length;
-var inactives = total - actives;
-var cats = {}; visibleAll.forEach(function (r) { if (r.category) cats[r.category] = true; });
-var flagged = 0, missing = 0, optimisables = 0;
-var pcts = [];
-visibleAll.forEach(function (r) {
-var cost = getCostTotal(r);
-var pi = getPriceInfo(r);
-var pct = getFoodCostPct(r);
-if (pct != null) pcts.push(pct);
-if (getFlag(r, cost, pi, pct)) flagged++;
-if (!pi && !isCuissonStage(r)) missing++;
-var optim = OPTIM_RESULTS[r.id];
-if (optim && optim.length) optimisables++;
-});
-var avgPct = pcts.length ? (pcts.reduce(function (s, v) { return s + v; }, 0) / pcts.length) : 0;
-document.getElementById('metrics').innerHTML =
-'<div class="metric"><div class="ml">Recettes</div><div class="mv">' + total + '</div></div>' +
-'<div class="metric accent"><div class="ml">Actives</div><div class="mv">' + actives + '</div></div>' +
-'<div class="metric"><div class="ml">Inactives</div><div class="mv">' + inactives + '</div></div>' +
-'<div class="metric"><div class="ml">Categories</div><div class="mv">' + Object.keys(cats).length + '</div></div>' +
-'<div class="metric"><div class="ml">Food cost brut moyen</div><div class="mv">' + fmtPct(avgPct) + '</div></div>' +
-'<div class="metric' + (flagged ? ' warn-metric' : '') + '"><div class="ml">A verifier</div><div class="mv">' + flagged + '</div></div>' +
-'<div class="metric' + (missing ? ' warn-metric' : '') + '"><div class="ml">Prix manquants</div><div class="mv">' + missing + '</div></div>' +
-'<div class="metric' + (optimisables ? ' optim-metric' : '') + '"><div class="ml">Optimisables</div><div class="mv">' + optimisables + '</div></div>';
-}
-
-function renderMissingPrices() {
-var missing = ALL.filter(function (r) { return isVisible(r) && !getPriceInfo(r) && !isCuissonStage(r); });
-missing.sort(function (a, b) { return getName(a).localeCompare(getName(b)); });
-document.getElementById('mpCount').textContent = missing.length + ' recette' + (missing.length > 1 ? 's' : '') + ' sans prix de vente connu';
-if (!missing.length) {
-document.getElementById('mpList').innerHTML = '<div class="loading-row">Toutes les recettes actives ont un prix de vente.</div>';
-return;
-}
-var html = missing.map(function (r) {
-var sug = apiticSuggestion(r);
-var suggHtml;
-if (sug) {
-suggHtml = '<div class="mp-sugg"><i class="ti ti-bulb"></i> Suggestion Apitic : <b>' + escapeHtml(sug.item.n) + '</b> — ' + fmtEUR(sug.item.pt) + ' <span class="sm">(similarite ' + Math.round(sug.score * 100) + '%)</span> <button class="btn btn-sm btn-gold" data-action="apply-sugg" data-id="' + r.id + '" data-price="' + sug.item.pt + '" data-src="' + escapeHtml('Apitic: ' + sug.item.n) + '">Valider ce prix</button></div>';
-} else {
-suggHtml = '<div class="mp-sugg"><i class="ti ti-alert-triangle"></i> Aucune correspondance Apitic trouvee automatiquement.</div>';
-}
-return '<div class="mp-item"><div class="mp-head"><div class="mp-title" style="margin-bottom:0">' + escapeHtml(getName(r)) + ' <span class="sm">(' + escapeHtml(getCategory(r)) + ')</span></div><button class="icon-btn" data-action="delete-recipe" data-id="' + r.id + '" title="Masquer cette reference (ref inutilisable)"><i class="ti ti-trash"></i></button></div>' +
-suggHtml +
-'<div class="mp-manual"><input type="number" step="0.01" min="0" placeholder="Prix TTC (EUR)" class="mp-input" data-id="' + r.id + '"><button class="btn btn-sm btn-primary" data-action="save-manual" data-id="' + r.id + '">Enregistrer</button></div></div>';
-}).join('');
-document.getElementById('mpList').innerHTML = html;
-}
-
-function renderHiddenList() {
-var ids = Object.keys(HIDDEN_RECIPES || {}).filter(function (id) { return HIDDEN_RECIPES[id] && HIDDEN_RECIPES[id].hidden; });
-var sec = document.getElementById('hiddenSection');
-if (!sec) return;
-if (!ids.length) { sec.style.display = 'none'; return; }
-sec.style.display = '';
-document.getElementById('hiddenCount').textContent = ids.length + ' recette' + (ids.length > 1 ? 's' : '') + ' masquee' + (ids.length > 1 ? 's' : '');
-var html2 = ids.map(function (id) {
-var rec = ALL.filter(function (x) { return x.id === id; })[0];
-var nm = rec ? getName(rec) : (HIDDEN_RECIPES[id].name || id);
-return '<div class="mp-item hidden-item"><div class="mp-title" style="margin-bottom:0">' + escapeHtml(nm) + '</div><button class="btn btn-sm" data-action="restore-recipe" data-id="' + id + '">Restaurer</button></div>';
-}).join('');
-document.getElementById('hiddenList').innerHTML = html2;
-}
-
-function renderApiticCatalog() {
-if (!APITIC_CATALOG.length) {
-document.getElementById('catalogBody').innerHTML = '<tr><td colspan="7" class="loading-row">Catalogue non disponible</td></tr>';
-return;
-}
-var q = (document.getElementById('catalogSearch').value || '').toLowerCase();
-var winTxt = (APITIC_SALES && APITIC_SALES.windowStart) ? (' · fenetre ' + APITIC_SALES.windowStart + ' -> ' + APITIC_SALES.windowEnd) : '';
-var activeCount = APITIC_CATALOG.filter(apiticIsActive60).length;
-document.getElementById('catalogInfo').textContent = APITIC_CATALOG.length + ' references · ' + activeCount + ' vendues sur 60j' + winTxt;
-var filtered = APITIC_CATALOG.filter(function (item) {
-var active60 = apiticIsActive60(item);
-if (catalogStatus === 'active' && !active60) return false;
-if (catalogStatus === 'inactive' && active60) return false;
-if (q && item.n.toLowerCase().indexOf(q) === -1 && String(item.i).indexOf(q) === -1) return false;
-return true;
-});
-var groupCount = {};
-filtered.forEach(function (item) { var k = normApitic(item.n) || item.n; groupCount[k] = (groupCount[k] || 0) + 1; });
-var html = filtered.map(function (item) {
-var active60 = apiticIsActive60(item);
-var key = normApitic(item.n) || item.n;
-var stageTag = '';
-if (groupCount[key] > 1) {
-var lname = item.n.toLowerCase();
-if (lname.indexOf('cuisson') !== -1) stageTag = ' <span class="tag-internal">cuisson</span>';
-else if (lname.indexOf('vte') !== -1 || lname.indexOf('vente') !== -1) stageTag = ' <span class="tag-internal">vente</span>';
-else stageTag = ' <span class="tag-internal">variante liee</span>';
-}
-return '<tr><td>' + escapeHtml(item.i) + '</td><td>' + escapeHtml(item.n) + stageTag + '</td><td>' + escapeHtml(item.c || '') + '</td><td class="num">' + fmtEUR(item.pt) + '</td><td>' + (item.pk ? 'Oui' : 'Non') + '</td><td>' + (item.vi ? '<span class="pill ok">Actif</span>' : '<span class="pill ko">Inactif</span>') + '</td><td>' + (active60 ? '<span class="pill ok">Vendu</span>' : '<span class="pill neutral">Aucune vente</span>') + '</td></tr>';
-}).join('');
-document.getElementById('catalogBody').innerHTML = html || '<tr><td colspan="7" class="loading-row">Aucune reference ne correspond aux filtres</td></tr>';
-}
-
-function getRecipeDetail(id) {
-if (DETAIL_CACHE[id]) return DETAIL_CACHE[id];
-if (RECIPE_DETAIL_DATA[id]) { DETAIL_CACHE[id] = Promise.resolve(RECIPE_DETAIL_DATA[id]); return DETAIL_CACHE[id]; }
-var p = apiGet('/public/v2/recipes/' + id, { compositionDetailsLevel: 'full' }).then(function (resp) {
-var out = { ok: true, data: resp.data };
-RECIPE_DETAIL_DATA[id] = out;
-return out;
-}).catch(function () {
-return { ok: false, data: null };
-});
-DETAIL_CACHE[id] = p;
-return p;
-}
-
-function getSupplierName(id) {
-var ing = INGR_BY_ID[id];
-if (!ing || !ing.supplierProducts || !ing.supplierProducts.length) return null;
-var sp = SUPPRODUCT_BY_ID[ing.supplierProducts[0].id];
-if (sp && sp.supplier && sp.supplier.name) return sp.supplier.name;
-return null;
-}
-
-function leafFromLine(line, qty) {
-var unitCost = (typeof line.costOnSite === 'number') ? line.costOnSite : (typeof line.cost === 'number' ? line.cost : 0);
-var lineCost = unitCost * qty;
-var ing = INGR_BY_ID[line.id];
-var opaque = !ing;
-var supplierName = getSupplierName(line.id);
-var optim = ing ? getBestSupplierOption(ing) : null;
-return {
-id: line.id,
-name: line.name,
-quantity: qty,
-unit: getUnitLabel(line.unit),
-unitCost: unitCost,
-lineCost: lineCost,
-supplier: supplierName || (opaque ? 'Fabrication interne' : 'Non renseigne'),
-opaque: opaque,
-optim: optim
-};
-}
-
-function expandLine(line, ratio, depth) {
-var qty = (Number(line.quantity) || 0) * ratio;
-if (depth > 6) return Promise.resolve([leafFromLine(line, qty)]);
-return getRecipeDetail(line.id).then(function (det) {
-if (det.ok && det.data && Array.isArray(det.data.composition) && det.data.composition.length) {
-var yieldQty = Number(det.data.quantity) || 1;
-var subRatio = qty / yieldQty;
-return Promise.all(det.data.composition.map(function (child) { return expandLine(child, subRatio, depth + 1); })).then(function (childResults) {
-return [].concat.apply([], childResults);
-});
-}
-return [leafFromLine(line, qty)];
-});
-}
-
-function getFlatIngredients(recipe) {
-return getRecipeDetail(recipe.id).then(function (det) {
-if (!det.ok || !det.data || !Array.isArray(det.data.composition)) return [];
-return Promise.all(det.data.composition.map(function (child) { return expandLine(child, 1, 1); })).then(function (results) {
-var flat = [].concat.apply([], results);
-var map = {};
-var order = [];
-flat.forEach(function (row) {
-var key = row.id || (row.name + '|' + row.unit);
-if (!map[key]) { map[key] = Object.assign({}, row); order.push(key); }
-else { map[key].quantity += row.quantity; map[key].lineCost += row.lineCost; }
-});
-return order.map(function (k) { return map[k]; });
-});
-});
-}
-
-function toggleRecipe(id) {
-var row = document.querySelector('.recipe-row[data-id="' + id + '"]');
-if (!row) return;
-var next = row.nextElementSibling;
-var chev = document.getElementById('chev-' + id);
-if (next && next.classList.contains('expand-row')) {
-next.remove();
-if (chev) chev.className = 'ti ti-chevron-right exp-chev';
-return;
-}
-document.querySelectorAll('.expand-row').forEach(function (n) { n.remove(); });
-document.querySelectorAll('.exp-chev').forEach(function (c) { c.className = 'ti ti-chevron-right exp-chev'; });
-if (chev) chev.className = 'ti ti-chevron-down exp-chev';
-var tr = document.createElement('tr');
-tr.className = 'expand-row';
-tr.innerHTML = '<td colspan="7"><div class="exp-wrap"><div class="loading-row">Chargement des ingredients...</div></div></td>';
-row.parentNode.insertBefore(tr, row.nextSibling);
-var r = ALL.filter(function (x) { return x.id === id; })[0];
-getFlatIngredients(r).then(function (rows) {
-tr.querySelector('.exp-wrap').innerHTML = buildExpandHtml(r, rows);
-OPTIM_RESULTS[id] = rows.filter(function (x) { return x.optim; }).map(function (x) { return Object.assign({ ingName: x.name }, x.optim); });
-renderMetrics();
-saveCache();
-}).catch(function () {
-tr.querySelector('.exp-wrap').innerHTML = '<div class="loading-row">Erreur de chargement des ingredients</div>';
-});
-}
-
-function buildExpandHtml(r, rows) {
-var cost = getCostTotal(r);
-var pi = getPriceInfo(r);
-var pct = getFoodCostPct(r);
-var cls = fcClass(pct);
-var flag = getFlag(r, cost, pi, pct);
-var hasOpaque = rows.some(function (x) { return x.opaque; });
-var head = '<div class="exp-head">' +
-'<span>Composants : <b>' + rows.length + '</b></span>' +
-'<span>Cout total HT : <b>' + fmtEUR(cost) + '</b></span>' +
-'<span>Prix final TTC : <b>' + (pi ? fmtEUR(pi.ttc) : '—') + '</b></span>' +
-'<span>Food cost brut : <b class="fc-val ' + cls + '">' + (pct != null ? fmtPct(pct) : '—') + '</b>' + (flag ? ' <span class="flag-pill" title="' + escapeHtml(flag) + '">! ' + escapeHtml(flag) + '</span>' : '') + '</span>' +
-'</div>';
-if (hasOpaque) {
-head += '<div class="opaque-note"><i class="ti ti-info-circle"></i> Certains composants sont des sous-recettes fabriquees en interne (laboratoire) : le detail de leurs ingredients ne peut pas etre affiche car Inpulse ne l expose pas via son API publique. Ils sont affiches tels quels ci-dessous.</div>';
-}
-var bodyRows = rows.map(function (c) {
-var ing = INGR_BY_ID[c.id];
-var clickable = !c.opaque && ing && Array.isArray(ing.supplierProducts) && ing.supplierProducts.length > 0;
-var optimTag = c.optim ? ' <span class="tag-optim-detail" title="Alternative: ' + escapeHtml(c.optim.supplierProductName) + ' chez ' + escapeHtml(c.optim.supplierName) + '">economie possible ' + fmtPct(c.optim.savingsPct) + '</span>' : '';
-var rowCls = c.opaque ? 'opaque-row' : (clickable ? ('ingr-row' + (c.optim ? ' row-optim' : '')) : (c.optim ? 'row-optim' : ''));
-return '<tr' + (rowCls ? ' class="' + rowCls + '"' : '') + (clickable ? ' data-ing="' + c.id + '"' : '') + '><td>' + (clickable ? '<i class="ti ti-chevron-right ing-chev"></i> ' : '') + escapeHtml(c.name) + (c.opaque ? ' <span class="tag-internal">sous-recette</span>' : '') + optimTag + '</td><td>' + escapeHtml(c.supplier) + '</td><td class="num">' + fmtNum(c.quantity) + '</td><td>' + escapeHtml(c.unit) + '</td><td class="num">' + fmtEUR(c.lineCost) + '</td></tr>';
-}).join('');
-var table = '<div class="tw"><table><thead><tr><th>Ingredient</th><th>Fournisseur</th><th>Quantite</th><th>Unite</th><th>Cout HT</th></tr></thead><tbody>' +
-(bodyRows || '<tr><td colspan="5" class="loading-row">Aucun composant</td></tr>') + '</tbody></table></div>';
-return head + table;
-}
-
-function buildIngredientDetailHtml(id) {
-var ing = INGR_BY_ID[id];
-if (!ing) return '<div class="loading-row">Detail non disponible</div>';
-var current = Number(ing.cost);
-var opts = [];
-(ing.supplierProducts || []).forEach(function (ref) {
-var sp = SUPPRODUCT_BY_ID[ref.id];
-if (!sp) return;
-var uc = unitCostOf(sp);
-opts.push({ name: sp.name, supplier: (sp.supplier && sp.supplier.name) || '?', unitCost: uc, active: sp.status === 'active' });
-});
-opts.sort(function (a, b) { return (a.unitCost == null ? 1e9 : a.unitCost) - (b.unitCost == null ? 1e9 : b.unitCost); });
-var rows = opts.map(function (o) {
-var tag = (o.unitCost != null && isFinite(current) && current > 0 && o.unitCost < current * 0.97) ? ' <span class="tag-internal" style="background:#dcfce7;color:#166534">moins cher</span>' : '';
-return '<tr' + (!o.active ? ' class="opaque-row"' : '') + '><td>' + escapeHtml(o.name) + tag + '</td><td>' + escapeHtml(o.supplier) + '</td><td class="num">' + (o.unitCost != null ? fmtEUR(o.unitCost) : '—') + '</td><td>' + (o.active ? '<span class="pill ok">Actif</span>' : '<span class="pill ko">Inactif</span>') + '</td></tr>';
-}).join('');
-return '<div class="tw" style="margin:6px 0 6px 24px"><table><thead><tr><th>Produit fournisseur</th><th>Fournisseur</th><th>Cout unitaire</th><th>Statut</th></tr></thead><tbody>' +
-(rows || '<tr><td colspan="4" class="loading-row">Aucune alternative fournisseur enregistree</td></tr>') + '</tbody></table></div>';
-}
-
-function startOptimScan() {
-if (OPTIM_SCAN_RUNNING) return;
-OPTIM_SCAN_RUNNING = true;
-var idx = 0;
-var total = ALL.length;
-var BATCH = 4;
-function step() {
-if (idx >= total) {
-updateProgress(100, 'Analyse optimisation terminee');
-setTimeout(function () { document.getElementById('progresswrap').classList.add('done'); }, 1200);
-render();
-saveCache();
-return;
-}
-document.getElementById('progresswrap').classList.remove('done');
-var batch = ALL.slice(idx, idx + BATCH);
-idx += BATCH;
-Promise.all(batch.map(function (r) {
-return getFlatIngredients(r).then(function (rows) {
-OPTIM_RESULTS[r.id] = rows.filter(function (x) { return x.optim; }).map(function (x) { return Object.assign({ ingName: x.name }, x.optim); });
-}).catch(function () { OPTIM_RESULTS[r.id] = []; });
-})).then(function () {
-updateProgress(Math.round((idx / total) * 100), 'Analyse optimisation fournisseurs : ' + Math.min(idx, total) + '/' + total);
-if (idx % (BATCH * 6) === 0 || idx >= total) { render(); }
-step();
-});
-}
-step();
-}
-
-document.getElementById('catFilter').addEventListener('change', render);
-document.getElementById('search').addEventListener('input', debounce(render, 200));
-document.getElementById('catalogSearch').addEventListener('input', debounce(renderApiticCatalog, 200));
-loadAll();
-
-</script>
-</body>
-</html>
+      function buildExpandHtml(r, rows) {
+      var cost = getCostTotal(r);
+      var pi = getPriceInfo(r);
+      var pct = getFoodCostPct(r);
+      var cls = fcClass(pct);
+      var flag = getFlag(r, cost, pi, pct);
+      var hasOpaque = rows.some(function (x) { return x.opaque; });
+      var head = '<div class="exp-head">' +
+        '<span>Composants : <b>' + rows.length + '</b></span>' +
+      '<span>Cout global HT : <b>' + fmtEUR(cost) + '</b></span>' +
+      '<span>Prix final TTC : <b>' + (pi ? fmtEUR(pi.ttc) : '\u2014') + '</b></span>' +
+      '<span>Food cost : <b class="fc-val ' + cls + '">' + (pct != null ? fmtPct(pct) : '\u2014') + '</b>' + (flag ? ' <span class="flag-pill" title="' + escapeHtml(flag) + '">! ' + escapeHtml(flag) + '</span>' : '') + '</span>' +
+      '</div>div>';
+    if (hasOpaque) {
+    head += '<div class="opaque-note"><i class="ti ti-info-circle"></i>i> Certains composants sont des sous-recettes fabriquees en interne (laboratoire) : le detail de leurs ingredients ne peut pas etre affiche car Inpulse ne l expose pas via son API publique. Ils sont affiches tels quels ci-dessous.</div>div>';
+    }
+    var bodyRows = rows.map(function (c) {
+    return '<tr><td>' + escapeHtml(c.name) + (c.opaque ? ' <span class="tag-internal">sous-recette</span>span>' : '') + '</td><td>' + escapeHtml(c.supplier) + '</td><td class="num">' + fmtNum(c.quantity) + '</td><td>' + escapeHtml(c.unit) + '</td><td class="num">' + fmtEUR(c.lineCost) + '</td></tr>';
+    }).join('');
+    var table = '<div class="tw"><table><colgroup><col style="width:38%"><col style="width:24%"><col style="width:14%"><col style="width:10%"><col style="width:14%"></colgroup><thead><tr><th>Ingredient</th><th>Fournisseur</th><th>Quantite</th><th>Unite</th><th>Cout HT</th></tr></thead><tbody>' +
+    (bodyRows || '<tr><td colspan="5" class="loading-row">Aucun composant</td>td></tr>') + '</tbody></table></div>div>';
+    return head + table;
+    }
+    
+      document.getElementById('catFilter').addEventListener('change', render);
+      document.getElementById('search').addEventListener('input', debounce(render, 200));
+      loadAll();
+    </script>
+    </body>
+    </html>
+      
