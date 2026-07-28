@@ -94,22 +94,56 @@ function scoreMatch(a, b) {
     wa.concat(wb).forEach(function(w){ union[w] = true; });
     var unionSize = Object.keys(union).length;
     return unionSize ? inter / unionSize : 0;
-}
+                              }
 function basePkgOf(sp) {
     if (!sp || !Array.isArray(sp.packagings) || !sp.packagings.length) return null;
     var pkg = sp.packagings.filter(function(p){ return !p.parentSupplierProductPackagingId; })[0];
     return pkg || sp.packagings[0];
 }
+function findPkgById(sp, id) {
+    return (sp.packagings || []).filter(function(p){ return p.id === id; })[0] || null;
+}
+function packagingChainToRoot(sp, pkg) {
+    var total = 1;
+    var current = pkg;
+    var guard = 0;
+    while (current && current.parentSupplierProductPackagingId && guard < 10) {
+        total *= (Number(current.quantity) || 1);
+        var parent = findPkgById(sp, current.parentSupplierProductPackagingId);
+        if (!parent) break;
+        current = parent;
+        guard++;
+    }
+    return { total: total, root: current };
+}
+function unitCostFromPack(sp, pkg) {
+    if (!sp || !pkg) return null;
+    var price = Number(sp.price);
+    if (!isFinite(price) || price <= 0) return null;
+    var info = packagingChainToRoot(sp, pkg);
+    var root = info.root;
+    if (!root) return null;
+    var rootQty = Number(root.quantity) || 1;
+    var totalBase = info.total * rootQty;
+    var unit = (root.unit || "").toLowerCase();
+    if (!totalBase || totalBase <= 0) return null;
+    if (unit === "kg" || unit === "l") return price / (totalBase * 1000);
+    return price / totalBase;
+}
 function unitCostOf(sp) {
     if (!sp) return null;
-    var pkg = basePkgOf(sp);
-    var price = Number(sp.price);
-    if (!pkg || !isFinite(price) || price <= 0) return null;
-    var qty = Number(pkg.quantity);
-    var unit = (pkg.unit || "").toLowerCase();
-    if (!qty || qty <= 0) return null;
-    if (unit === "kg" || unit === "l") return price / (qty * 1000);
-    return price / qty;
+    var root = basePkgOf(sp);
+    var order = (sp.packagings || []).filter(function(p){ return p.isUsedInOrder; })[0] || root;
+    var a = unitCostFromPack(sp, root);
+    var b = unitCostFromPack(sp, order);
+    if (a == null && b == null) return null;
+    if (a != null && b != null) {
+        if (a === b) return a;
+        var lo = Math.min(a, b), hi = Math.max(a, b);
+        if (lo > 0 && hi / lo < 1.15) return (a + b) / 2;
+        return null;
+    }
+    return a != null ? a : b;
 }
 function findFuzzySupplierCost(name) {
     var target = normalizeName(name);
@@ -130,36 +164,39 @@ function findFuzzySupplierCost(name) {
 function getBestSupplierOption(ing) {
     if (!ing || !Array.isArray(ing.supplierProducts) || ing.supplierProducts.length < 2 || typeof SUPPRODUCT_BY_ID === "undefined") return null;
     var current = Number(ing.cost);
+    if (!isFinite(current) || current <= 0) return null;
     var best = null;
     ing.supplierProducts.forEach(function (ref) {
         var sp = SUPPRODUCT_BY_ID[ref.id];
         if (!sp || sp.status !== "active") return;
         var uc = unitCostOf(sp);
         if (uc == null) return;
+        if (uc < current * 0.2 || uc > current * 5) return;
         if (!best || uc < best.cost) best = { cost: uc, supplierProduct: sp };
     });
-    if (!best || !isFinite(current) || current <= 0) return null;
-    if (best.cost < current * 0.97) {
+    if (!best) return null;
+    if (best.cost < current * 0.90) {
         return {
             current: current,
             best: best.cost,
             savingsPct: (1 - best.cost / current) * 100,
             supplierName: (best.supplierProduct.supplier && best.supplierProduct.supplier.name) || "?",
-            supplierProductName: best.supplierProduct.name
+            supplierProductName: best.supplierProduct.name,
+            estimated: true
         };
     }
     return null;
 }
 
 function hiddenRecipeGetAll() {
-  return fetch("/api/hidden-recipes").then(function(r){ return r.json(); });
+    return fetch("/api/hidden-recipes").then(function(r){ return r.json(); });
 }
 function hiddenRecipeSet(id, data) {
-  const body = Object.assign({ id: id }, data);
-  return fetch("/api/hidden-recipes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(function(r){ return r.json(); });
+    const body = Object.assign({ id: id }, data);
+    return fetch("/api/hidden-recipes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(function(r){ return r.json(); });
 }
 function hiddenRecipeDelete(id) {
-  return fetch("/api/hidden-recipes?id=" + encodeURIComponent(id), { method: "DELETE" }).then(function(r){ return r.json(); });
+    return fetch("/api/hidden-recipes?id=" + encodeURIComponent(id), { method: "DELETE" }).then(function(r){ return r.json(); });
 }
 
 // ==== Shared core (Inpulse-only data and classification) ====
@@ -360,4 +397,3 @@ function coreMakeIngredientHelpers(state) {
     }
     return { getRecipeDetail: getRecipeDetail, getSupplierName: getSupplierName, getFlatIngredients: getFlatIngredients };
 }
-
