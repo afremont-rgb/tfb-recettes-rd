@@ -360,3 +360,4 @@ function coreMakeIngredientHelpers(state) {
     }
     return { getRecipeDetail: getRecipeDetail, getSupplierName: getSupplierName, getFlatIngredients: getFlatIngredients };
 }
+
