@@ -397,3 +397,16 @@ function coreMakeIngredientHelpers(state) {
     }
     return { getRecipeDetail: getRecipeDetail, getSupplierName: getSupplierName, getFlatIngredients: getFlatIngredients };
 }
+
+
+function sharedServerGetCache() {
+    return fetch("/api/shared-cache").then(function (r) { return r.json(); }).catch(function () { return null; });
+}
+function sharedServerSaveCache(obj) {
+    return fetch("/api/shared-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(obj) }).catch(function () { });
+}
+function sharedSaveCacheLocalOnly(obj) {
+    try {
+        localStorage.setItem(SHARED_CACHE_KEY, JSON.stringify(obj));
+    } catch (e) { }
+}
