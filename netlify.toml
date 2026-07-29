@@ -31,3 +31,9 @@ from = "/api/hidden-recipes"
 to = "/.netlify/functions/hidden-recipes"
 status = 200
 force = true
+
+[[redirects]]
+from = "/api/shared-cache"
+to = "/.netlify/functions/shared-cache"
+status = 200
+force = true
