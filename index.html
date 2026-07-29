@@ -12,46 +12,46 @@
 <body>
   <nav class="topbar">
     <div class="topbar-l">
-      <a href="/" class="logo"><img src="https://thefrenchbastards.fr/media/site/07b0334dcf-1732087927/header-logo-300x.png" alt="The French Bastards" class="logo-img"></a>a>
-      <span class="badge">Food Cost R&D</span>span>
+      <a href="/" class="logo"><img src="https://thefrenchbastards.fr/media/site/07b0334dcf-1732087927/header-logo-300x.png" alt="The French Bastards" class="logo-img"></a>
+      <span class="badge">Food Cost R&D</span>
       <div class="pagenav">
-        <a href="/" class="active">Recettes existantes</a>a>
-        <a href="/developpement.html">R&D Developpement</a>a>
-      </div>div>
-    </div>div>
+        <a href="/" class="active">Recettes existantes</a>
+        <a href="/developpement.html">R&D Developpement</a>
+      </div>
+    </div>
     <div class="topbar-r">
-      <button class="btn btn-sm" onclick="loadAll(true)"><i class="ti ti-refresh"></i>i> Actualiser</button>button>
-    </div>div>
-  </nav>nav>
+      <button class="btn btn-sm" onclick="loadAll(true)"><i class="ti ti-refresh"></i> Actualiser</button>
+    </div>
+  </nav>
   <div class="progresswrap" id="progresswrap">
-    <div class="progresstxt" id="progresstxt">Chargement...</div>div>
-    <div class="progressbar"><div class="progressfill" id="progressfill" style="width:0%"></div>div></div>div>
-    <div class="progresstxt" id="progresspct">0%</div>div>
-  </div>div>
+    <div class="progresstxt" id="progresstxt">Chargement...</div>
+    <div class="progressbar"><div class="progressfill" id="progressfill" style="width:0%"></div></div>
+    <div class="progresstxt" id="progresspct">0%</div>
+  </div>
   <div class="main">
     <div class="conn" id="conn">
-      <div class="dot" id="dot"></div>div>
-      <div style="flex:1;font-size:13px;color:var(--tx2)" id="conn-txt">Connexion a Inpulse...</div>div>
-    </div>div>
-    <div class="metrics" id="metrics"></div>div>
+      <div class="dot" id="dot"></div>
+      <div style="flex:1;font-size:13px;color:var(--tx2)" id="conn-txt">Connexion a Inpulse...</div>
+    </div>
+    <div class="metrics" id="metrics"></div>
     <div class="filters">
       <div class="fg" id="statusFilter">
-        <button class="fgb active" data-v="all">Toutes</button>button>
-        <button class="fgb" data-v="active">Actives</button>button>
-        <button class="fgb" data-v="inactive">Inactives</button>button>
-      </div>div>
-      <select id="catFilter"><option value="all">Toutes categories</option>option></select>select>
-      <div class="sw"><i class="ti ti-search"></i>i><input class="si" id="search" type="text" placeholder="Rechercher une recette..."></div>div>
-    </div>div>
+        <button class="fgb active" data-v="all">Toutes</button>
+        <button class="fgb" data-v="active">Actives</button>
+        <button class="fgb" data-v="inactive">Inactives</button>
+      </div>
+      <select id="catFilter"><option value="all">Toutes categories</option></select>
+      <div class="sw"><i class="ti ti-search"></i><input class="si" id="search" type="text" placeholder="Rechercher une recette..."></div>
+    </div>
     <div class="section">
-      <div class="sh"><div class="st">Recettes existantes par categorie</div>div><div class="sm" id="countTxt"></div>div></div>div>
-      <div id="accordionWrap"><div class="loading-row">Chargement...</div>div></div>div>
-    </div>div>
+      <div class="sh"><div class="st">Recettes existantes par categorie</div><div class="sm" id="countTxt"></div></div>
+      <div id="accordionWrap"><div class="loading-row">Chargement...</div></div>
+    </div>
     <div class="section" id="hiddenSection" style="display:none">
-      <div class="sh"><div class="st">Recettes masquees</div>div><div class="sm" id="hiddenCount"></div>div></div>div>
-      <div class="mp-list" id="hiddenList"></div>div>
-    </div>div>
-  </div>div>
+      <div class="sh"><div class="st">Recettes masquees</div><div class="sm" id="hiddenCount"></div></div>
+      <div class="mp-list" id="hiddenList"></div>
+    </div>
+  </div>
   <script src="/assets/app.js"></script>
   <script>
     var ALL = [];
@@ -223,7 +223,7 @@
       if (!silent) {
       document.getElementById('dot').className = 'dot err';
       document.getElementById('conn-txt').textContent = 'Impossible de recuperer les donnees depuis Inpulse.';
-      document.getElementById('accordionWrap').innerHTML = '<div class="loading-row">Aucune donnee</div>div>';
+      document.getElementById('accordionWrap').innerHTML = '<div class="loading-row">Aucune donnee</div>';
       updateProgress(100, 'Erreur');
       }
       });
@@ -234,7 +234,7 @@
       visibleList().forEach(function (r) { cats[coreGetCategory(r)] = true; });
       var sel = document.getElementById('catFilter');
       var prev = sel.value;
-      sel.innerHTML = '<option value="all">Toutes categories</option>option>';
+      sel.innerHTML = '<option value="all">Toutes categories</option>';
       Object.keys(cats).sort().forEach(function (c) {
       var o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o);
       });
@@ -305,20 +305,20 @@
       var pct = getFoodCostPct(r);
       var cls = fcClass(pct);
       var flag = getFlag(r, cost, pi, pct);
-      var sousTag = isSousRecette(r) ? ' <span class="tag-internal">sous-recette</span>span>' : '';
+      var sousTag = isSousRecette(r) ? ' <span class="tag-internal">sous-recette</span>' : '';
       return '<tr class="recipe-row" data-id="' + r.id + '">' +
-        '<td class="tb name"><i class="ti ti-chevron-right exp-chev" id="chev-' + r.id + '"></i>i> ' + escapeHtml(coreGetName(r)) + sousTag + '</td>td>' +
-        '<td class="num">' + fmtEUR(cost) + '</td>td>' +
-        '<td class="num">' + (pi ? fmtEUR(pi.ttc) : '\u2014') + '</td>td>' +
-        '<td class="num"><span class="fc-val ' + cls + '">' + (pct != null ? fmtPct(pct) : '\u2014') + '</span>span></td>td>' +
-        '<td style="text-align:center">' + (flag ? '<span class="flag-pill" title="' + escapeHtml(flag) + '">!</span>span>' : '') + '</td>td>' +
-        '<td>' + (isActive(r) ? '<span class="pill ok">Active</span>span>' : '<span class="pill ko">Inactive</span>span>') + '</td>' +
-    '<td style="text-align:center"><button class="icon-btn" data-action="delete-recipe" data-id="' + r.id + '" title="Masquer cette recette de la vue"><i class="ti ti-trash"></i>i></button>button></td>' +
-    '</tr>tr>';
+        '<td class="tb name"><i class="ti ti-chevron-right exp-chev" id="chev-' + r.id + '"></i> ' + escapeHtml(coreGetName(r)) + sousTag + '</td>' +
+        '<td class="num">' + fmtEUR(cost) + '</td>' +
+        '<td class="num">' + (pi ? fmtEUR(pi.ttc) : '\u2014') + '</td>' +
+        '<td class="num"><span class="fc-val ' + cls + '">' + (pct != null ? fmtPct(pct) : '\u2014') + '</span></td>' +
+        '<td style="text-align:center">' + (flag ? '<span class="flag-pill" title="' + escapeHtml(flag) + '">!</span>' : '') + '</td>' +
+        '<td>' + (isActive(r) ? '<span class="pill ok">Active</span>' : '<span class="pill ko">Inactive</span>') + '</td>' +
+    '<td style="text-align:center"><button class="icon-btn" data-action="delete-recipe" data-id="' + r.id + '" title="Masquer cette recette de la vue"><i class="ti ti-trash"></i></button></td>' +
+    '</tr>';
     }).join('');
     return '<div class="tw"><table><colgroup><col style="width:34%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:7%"><col style="width:11%"><col style="width:9%"></colgroup>' +
     '<thead><tr><th>Nom</th><th class="num">Cout global HT</th><th class="num">Prix final TTC</th><th class="num">Food cost</th><th style="text-align:center">Alerte</th><th>Statut</th><th style="text-align:center">Actions</th></tr></thead>' +
-    '<tbody>' + trs + '</tbody></table></div>div>';
+    '<tbody>' + trs + '</tbody></table></div>';
     }
     
     function render() {
@@ -343,24 +343,24 @@
     if (!total) return;
     var collapsed = COLLAPSED_MACRO[m] !== false;
     html += '<div class="macro-cat">';
-    html += '<div class="macro-head' + (collapsed ? '' : ' open') + '" data-macro="' + m + '"><i class="ti ti-chevron-right chev"></i>i><span class="macro-title">' + escapeHtml(CORE_MACRO_LABELS[m]) + '</span>span><span class="cnt">(' + total + ' recette' + (total > 1 ? 's' : '') + ')</span>span></div>div>';
+    html += '<div class="macro-head' + (collapsed ? '' : ' open') + '" data-macro="' + m + '"><i class="ti ti-chevron-right chev"></i><span class="macro-title">' + escapeHtml(CORE_MACRO_LABELS[m]) + '</span><span class="cnt">(' + total + ' recette' + (total > 1 ? 's' : '') + ')</span></div>';
     html += '<div class="macro-body" style="display:' + (collapsed ? 'none' : 'block') + '">';
     ['active', 'inactive'].forEach(function (st) {
     var stLabel = st === 'active' ? 'Actives' : 'Inactives';
     var stTotal = g[st].Paris.length + g[st].Bordeaux.length;
     if (!stTotal) return;
-    html += '<div class="sub-block"><div class="sub-title">' + stLabel + ' (' + stTotal + ')</div>div>';
+    html += '<div class="sub-block"><div class="sub-title">' + stLabel + ' (' + stTotal + ')</div>';
     ['Paris', 'Bordeaux'].forEach(function (site) {
     var rows = g[st][site];
     if (!rows.length) return;
     rows.sort(function (a, b) { return coreGetName(a).localeCompare(coreGetName(b)); });
-    html += '<div class="site-block"><span class="site-title">' + site + ' (' + rows.length + ')</span>span>' + renderRecipeTable(rows) + '</div>div>';
+    html += '<div class="site-block"><span class="site-title">' + site + ' (' + rows.length + ')</span>' + renderRecipeTable(rows) + '</div>';
     });
-    html += '</div>div>';
+    html += '</div>';
     });
-    html += '</div>div></div>div>';
+    html += '</div></div>';
     });
-    document.getElementById('accordionWrap').innerHTML = html || '<div class="loading-row">Aucune recette ne correspond aux filtres</div>div>';
+    document.getElementById('accordionWrap').innerHTML = html || '<div class="loading-row">Aucune recette ne correspond aux filtres</div>';
     renderMetrics();
     }
 
@@ -382,13 +382,13 @@
       });
       var avgPct = pcts.length ? (pcts.reduce(function (s, v) { return s + v; }, 0) / pcts.length) : 0;
       document.getElementById('metrics').innerHTML =
-      '<div class="metric"><div class="ml">Recettes existantes</div>div><div class="mv">' + total + '</div>div></div>div>' +
-      '<div class="metric accent"><div class="ml">Actives</div>div><div class="mv">' + actives + '</div>div></div>div>' +
-      '<div class="metric"><div class="ml">Inactives</div>div><div class="mv">' + inactives + '</div>div></div>div>' +
-      '<div class="metric"><div class="ml">Categories</div>div><div class="mv">' + Object.keys(cats).length + '</div>div></div>div>' +
-      '<div class="metric"><div class="ml">Sous-recettes utilisees</div>div><div class="mv">' + sousCount + '</div>div></div>div>' +
-      '<div class="metric"><div class="ml">Food cost moyen</div>div><div class="mv">' + fmtPct(avgPct) + '</div>div></div>div>' +
-      '<div class="metric' + (flagged ? ' warn-metric' : '') + '"><div class="ml">A verifier</div>div><div class="mv">' + flagged + '</div>div></div>div>';
+      '<div class="metric"><div class="ml">Recettes existantes</div><div class="mv">' + total + '</div></div>' +
+      '<div class="metric accent"><div class="ml">Actives</div><div class="mv">' + actives + '</div></div>' +
+      '<div class="metric"><div class="ml">Inactives</div><div class="mv">' + inactives + '</div></div>' +
+      '<div class="metric"><div class="ml">Categories</div><div class="mv">' + Object.keys(cats).length + '</div></div>' +
+      '<div class="metric"><div class="ml">Sous-recettes utilisees</div><div class="mv">' + sousCount + '</div></div>' +
+      '<div class="metric"><div class="ml">Food cost moyen</div><div class="mv">' + fmtPct(avgPct) + '</div></div>' +
+      '<div class="metric' + (flagged ? ' warn-metric' : '') + '"><div class="ml">A verifier</div><div class="mv">' + flagged + '</div></div>';
       }
 
       function renderHiddenList() {
@@ -401,7 +401,7 @@
       var html2 = ids.map(function (id) {
       var rec = RECIPE_BY_ID[id];
       var nm = rec ? coreGetName(rec) : (HIDDEN_RECIPES[id].name || id);
-      return '<div class="mp-item hidden-item"><div class="mp-title" style="margin-bottom:0">' + escapeHtml(nm) + '</div>div><button class="btn btn-sm" data-action="restore-recipe" data-id="' + id + '">Restaurer</button>button></div>div>';
+      return '<div class="mp-item hidden-item"><div class="mp-title" style="margin-bottom:0">' + escapeHtml(nm) + '</div><button class="btn btn-sm" data-action="restore-recipe" data-id="' + id + '">Restaurer</button></div>';
       }).join('');
       document.getElementById('hiddenList').innerHTML = html2;
       }
@@ -421,13 +421,13 @@
       if (chev) chev.className = 'ti ti-chevron-down exp-chev';
       var tr = document.createElement('tr');
       tr.className = 'expand-row';
-      tr.innerHTML = '<td colspan="7"><div class="exp-wrap"><div class="loading-row">Chargement des ingredients...</div>div></div>div></td>td>';
+      tr.innerHTML = '<td colspan="7"><div class="exp-wrap"><div class="loading-row">Chargement des ingredients...</div></div></td>';
       row.parentNode.insertBefore(tr, row.nextSibling);
       var r = RECIPE_BY_ID[id];
       HELPERS.getFlatIngredients(r).then(function (rows) {
       tr.querySelector('.exp-wrap').innerHTML = buildExpandHtml(r, rows);
       }).catch(function () {
-      tr.querySelector('.exp-wrap').innerHTML = '<div class="loading-row">Erreur de chargement des ingredients</div>div>';
+      tr.querySelector('.exp-wrap').innerHTML = '<div class="loading-row">Erreur de chargement des ingredients</div>';
       });
       }
 
@@ -443,15 +443,15 @@
       '<span>Cout global HT : <b>' + fmtEUR(cost) + '</b></span>' +
       '<span>Prix final TTC : <b>' + (pi ? fmtEUR(pi.ttc) : '\u2014') + '</b></span>' +
       '<span>Food cost : <b class="fc-val ' + cls + '">' + (pct != null ? fmtPct(pct) : '\u2014') + '</b>' + (flag ? ' <span class="flag-pill" title="' + escapeHtml(flag) + '">! ' + escapeHtml(flag) + '</span>' : '') + '</span>' +
-      '</div>div>';
+      '</div>';
     if (hasOpaque) {
-    head += '<div class="opaque-note"><i class="ti ti-info-circle"></i>i> Certains composants sont des sous-recettes fabriquees en interne (laboratoire) : le detail de leurs ingredients ne peut pas etre affiche car Inpulse ne l expose pas via son API publique. Ils sont affiches tels quels ci-dessous.</div>div>';
+    head += '<div class="opaque-note"><i class="ti ti-info-circle"></i> Certains composants sont des sous-recettes fabriquees en interne (laboratoire) : le detail de leurs ingredients ne peut pas etre affiche car Inpulse ne l expose pas via son API publique. Ils sont affiches tels quels ci-dessous.</div>';
     }
     var bodyRows = rows.map(function (c) {
-    return '<tr><td>' + escapeHtml(c.name) + (c.opaque ? ' <span class="tag-internal">sous-recette</span>span>' : '') + '</td><td>' + escapeHtml(c.supplier) + '</td><td class="num">' + fmtNum(c.quantity) + '</td><td>' + escapeHtml(c.unit) + '</td><td class="num">' + fmtEUR(c.lineCost) + '</td></tr>';
+    return '<tr><td>' + escapeHtml(c.name) + (c.opaque ? ' <span class="tag-internal">sous-recette</span>' : '') + '</td><td>' + escapeHtml(c.supplier) + '</td><td class="num">' + fmtNum(c.quantity) + '</td><td>' + escapeHtml(c.unit) + '</td><td class="num">' + fmtEUR(c.lineCost) + '</td></tr>';
     }).join('');
     var table = '<div class="tw"><table><colgroup><col style="width:38%"><col style="width:24%"><col style="width:14%"><col style="width:10%"><col style="width:14%"></colgroup><thead><tr><th>Ingredient</th><th>Fournisseur</th><th>Quantite</th><th>Unite</th><th>Cout HT</th></tr></thead><tbody>' +
-    (bodyRows || '<tr><td colspan="5" class="loading-row">Aucun composant</td>td></tr>') + '</tbody></table></div>div>';
+    (bodyRows || '<tr><td colspan="5" class="loading-row">Aucun composant</td></tr>') + '</tbody></table></div>';
     return head + table;
     }
     
