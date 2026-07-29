@@ -154,21 +154,39 @@
       }
 
       function loadAll(force) {
-      var cached = !force ? readCache() : null;
-      if (cached && cached.USERS_MAP) {
-      applyLoadedData(cached);
-      document.getElementById('dot').className = 'dot ok';
-      document.getElementById('conn-txt').textContent = ALL.length + ' recettes (cache local, actualise ' + fmtCacheAge(cached._savedAt) + ')';
-      updateProgress(100, 'Cache local charge');
-      document.getElementById('progresswrap').classList.add('done');
-      populateCategories();
-      render();
-      renderHiddenList();
-      var age = Date.now() - cached._savedAt;
-      if (age > SHARED_CACHE_MAX_AGE) setTimeout(function () { fetchFresh(true); }, 400);
-      return;
-      }
-      fetchFresh(false);
+        var cached = !force ? readCache() : null;
+        if (cached && cached.USERS_MAP) {
+          applyLoadedData(cached);
+          document.getElementById('dot').className = 'dot ok';
+          document.getElementById('conn-txt').textContent = ALL.length + ' recettes (cache local, actualise ' + fmtCacheAge(cached._savedAt) + ')';
+          updateProgress(100, 'Cache local charge');
+          document.getElementById('progresswrap').classList.add('done');
+          populateCategories();
+          render();
+          renderHiddenList();
+          var age = Date.now() - cached._savedAt;
+          if (age > SHARED_CACHE_MAX_AGE) setTimeout(function () { fetchFresh(true); }, 400);
+          return;
+        }
+        if (force) { fetchFresh(true); return; }
+        document.getElementById('conn-txt').textContent = 'Verification du cache partage...';
+        sharedServerGetCache().then(function (serverCached) {
+          if (serverCached && serverCached.USERS_MAP) {
+            sharedSaveCacheLocalOnly(serverCached);
+            applyLoadedData(serverCached);
+            document.getElementById('dot').className = 'dot ok';
+            document.getElementById('conn-txt').textContent = ALL.length + ' recettes (cache partage, actualise ' + fmtCacheAge(serverCached._savedAt) + ')';
+            updateProgress(100, 'Cache partage charge');
+            document.getElementById('progresswrap').classList.add('done');
+            populateCategories();
+            render();
+            renderHiddenList();
+            var age2 = Date.now() - serverCached._savedAt;
+            if (age2 > SHARED_CACHE_MAX_AGE) setTimeout(function () { fetchFresh(true); }, 400);
+          } else {
+            fetchFresh(false);
+          }
+        });
       }
 
       function fetchFresh(silent) {
@@ -213,10 +231,12 @@
       render();
       renderHiddenList();
       updateProgress(100, 'Pret');
-      sharedSaveCache({
-      ALL: ALL, PRODUCTS_BY_ENTITY: PRODUCTS_BY_ENTITY, INGR_BY_ID: INGR_BY_ID, SUPPRODUCT_BY_ID: SUPPRODUCT_BY_ID,
-      HIDDEN_RECIPES: HIDDEN_RECIPES, USERS_MAP: USERS_MAP, RECIPE_DETAIL_DATA: STATE.RECIPE_DETAIL_DATA
-      });
+      var cachePayload = {
+        ALL: ALL, PRODUCTS_BY_ENTITY: PRODUCTS_BY_ENTITY, INGR_BY_ID: INGR_BY_ID, SUPPRODUCT_BY_ID: SUPPRODUCT_BY_ID,
+        HIDDEN_RECIPES: HIDDEN_RECIPES, USERS_MAP: USERS_MAP, RECIPE_DETAIL_DATA: STATE.RECIPE_DETAIL_DATA
+      };
+        sharedSaveCache(cachePayload);
+        sharedServerSaveCache(cachePayload);
       setTimeout(function () { document.getElementById('progresswrap').classList.add('done'); }, 900);
       });
       }).catch(function (e) {
