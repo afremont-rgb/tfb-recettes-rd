@@ -660,7 +660,7 @@ if (match) {
 row.refId = match.id;
 row.type = match.type;
 row.category = match.category;
-row.costKg = match.costPerKg;
+row.costKg = Math.round(match.costPerKg * 100) / 100;
 row.perUnit = match.perUnit;
 renderIngRows();
 var newInput = document.querySelector('#ing-block-' + idx + ' input[data-field="name"]');
