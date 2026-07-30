@@ -538,15 +538,6 @@ if (!confirm('Supprimer ce brouillon ?')) return;
 draftsDelete(id).then(function () { delete DRAFTS[id]; renderDrafts(); toast('Brouillon supprime'); });
 }
 
-function populateFlourOptions() {
-var sel = document.getElementById('f-farine');
-if (!sel) return;
-sel.innerHTML = '<option value="">-- choisir --</option>';
-INGREDIENTS_LIST.filter(function (i) { return getIngName(i).toLowerCase().indexOf('farine') !== -1; }).forEach(function (i) {
-var o = document.createElement('option'); o.value = getIngName(i); o.textContent = getIngName(i); sel.appendChild(o);
-});
-}
-
 function getCategoryStats(cat) {
 if (!cat) return null;
 var catNorm = cat.trim().toLowerCase();
@@ -576,20 +567,20 @@ return '<option value="' + escapeHtml(pickDisplayName(p)) + '">';
 var html = '<div class="modal-bg" onclick="if(event.target===this) closeModal()">' +
 '<div class="modal">' +
 '<div class="modal-h"><h2>' + (d ? 'Modifier la recette' : 'Nouvelle recette R&D') + '</h2><button class="btn btn-sm" onclick="closeModal()">Fermer</button></div>' +
-'<div class="grid3">' +
+'<div class="grid2">' +
 '<div class="field"><label>Nom de la recette</label><input type="text" id="f-name" value="' + escapeHtml(d ? d.name : '') + '"></div>' +
 '<div class="field"><label>Categorie</label><input type="text" id="f-cat" oninput="updateTotals()" value="' + escapeHtml(d ? d.category : '') + '" placeholder="ex: SNACKING"></div>' +
-'<div class="field"><label>Farine utilisee</label><select id="f-farine"></select></div>' +
+
 '</div>' +
-'<div class="grid3">' +
+'<div class="grid2">' +
 '<div class="field"><label>Qualite</label><select id="f-qualite"><option>A definir</option><option>Standard</option><option>Bio</option><option>Premium</option><option>Local</option></select></div>' +
-'<div class="field"><label>Prix de vente envisage TTC (€)</label><input type="number" step="0.01" id="f-price" oninput="updateTotals()" value="' + (d ? d.salePrice : '') + '"></div>' +
 '<div class="field"><label>Statut</label><select id="f-status"><option value="dev">En developpement</option><option value="ready">Prete a tester</option></select></div>' +
 '</div>' +
 '<div class="field"><label>Ingredients et sous-recettes (recherchez dans les recettes centrales Inpulse : grammage, prix et categorie se remplissent automatiquement)</label></div>' +
 '<div id="ingRows"></div>' +
 '<button class="btn btn-sm" type="button" onclick="addIngRow()"><i class="ti ti-plus"></i> Ajouter une ligne</button>' +
 '<div class="grid2" style="margin-top:14px">' +
+'<div class="field"><label>Prix de vente envisage TTC (€)</label><input type="number" step="0.01" id="f-price" oninput="updateTotals()" value="' + (d ? d.salePrice : '') + '"></div>' +
 '<div class="field"><label>Emballage (€, prix approximatif a saisir)</label><input type="number" step="0.01" id="f-pack" oninput="updateTotals()" value="' + (d && d.packagingCost != null ? d.packagingCost : '') + '"></div>' +
 '</div>' +
 '<div class="totals-box" id="totalsBox"></div>' +
@@ -601,8 +592,6 @@ var html = '<div class="modal-bg" onclick="if(event.target===this) closeModal()"
 '</div>' +
 '</div>';
 document.getElementById('modalRoot').innerHTML = html;
-populateFlourOptions();
-if (d && d.flour) document.getElementById('f-farine').value = d.flour;
 if (d && d.quality) document.getElementById('f-qualite').value = d.quality;
 if (d && d.status) document.getElementById('f-status').value = d.status;
 if (!currentIngredients.length) currentIngredients.push({ name: '', grams: 0, costKg: 0, type: 'ingredient', category: '', perUnit: false });
@@ -724,7 +713,6 @@ var draft = {
 id: currentDraftId || undefined,
 name: name,
 category: document.getElementById('f-cat').value,
-flour: document.getElementById('f-farine').value,
 quality: document.getElementById('f-qualite').value,
 status: document.getElementById('f-status').value,
 salePrice: price,
