@@ -282,7 +282,7 @@ function coreSiteOf(r) {
 function coreClassify(r, productsByEntity) {
     if (coreIsCuisson(r)) return "hidden";
     if (coreIsSousRecette(r)) return "sous-recette";
-    return coreOwnPrice(r, productsByEntity) ? "existante" : "rd";
+    return "existante";
 }
 
 function coreBuildUsageGraph(all, getDetail, onProgress) {
@@ -333,7 +333,7 @@ function coreUsageBuckets(id, usersMap, recipeById, productsByEntity, visited) {
             Object.keys(sub).forEach(function (k) { buckets[k] = true; });
         }
     });
-    if (!Object.keys(buckets).length) buckets.rd = true;
+    if (!Object.keys(buckets).length) buckets.existante = true;
     return buckets;
 }
 
