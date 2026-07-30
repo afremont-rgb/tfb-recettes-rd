@@ -109,7 +109,7 @@
     function getPriceInfo(r) { return coreOwnPrice(r, PRODUCTS_BY_ENTITY); }
     function getCostTotal(r) { return coreGetCostTotal(r); }
     function getFoodCostPct(r) { return coreGetFoodCostPct(r, PRODUCTS_BY_ENTITY); }
-    function isActive(r) { return coreIsActive(r); }
+    function isActive(r) { if (!isSousRecette(r) && !coreOwnPrice(r, PRODUCTS_BY_ENTITY)) return false; return coreIsActive(r); }
     function isSousRecette(r) { return CLS_BY_ID[r.id] === 'sous-recette'; }
 
     function fcClass(pct) {
