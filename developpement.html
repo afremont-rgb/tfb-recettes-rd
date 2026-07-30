@@ -249,6 +249,7 @@ supplierProducts.forEach(function (s) { SUPPRODUCT_BY_ID[s.id] = s; });
 STATE = { DETAIL_CACHE: {}, RECIPE_DETAIL_DATA: {}, INGR_BY_ID: INGR_BY_ID, SUPPRODUCT_BY_ID: SUPPRODUCT_BY_ID };
 HELPERS = coreMakeIngredientHelpers(STATE);
 classifyAll();
+  buildPicklist();
 document.getElementById('dot').className = 'dot ok';
 document.getElementById('conn-txt').textContent = ALL.length + ' recettes chargees depuis Inpulse. Analyse des sous-recettes en cours...';
 updateProgress(20, 'Analyse des sous-recettes...');
