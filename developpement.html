@@ -220,7 +220,6 @@ return;
 fetchFresh(false);
 loadDrafts().then(renderDrafts);
 }
-
 function fetchFresh(silent) {
 if (!silent) {
 document.getElementById('conn-txt').textContent = 'Connexion a Inpulse...';
@@ -346,7 +345,6 @@ ingRow.parentNode.insertBefore(tr2, ingRow.nextSibling);
 return;
 }
 });
-
 function renderRecipeTable(rows) {
 var trs = rows.map(function (r) {
 var cost = getCostTotal(r);
@@ -610,35 +608,51 @@ if (!currentIngredients.length) currentIngredients.push({ name: '', grams: 0, co
 renderIngRows();
 }
 
-function renderIngRows() {
-var el = document.getElementById('ingRows');
-el.innerHTML = currentIngredients.map(function (row, idx) {
-var qtyLabel = row.perUnit ? 'Qte (unites)' : 'Grammes';
-var priceLabel = row.perUnit ? '€ / unite' : '€ / kg';
-var lineCost = row.perUnit ? (Number(row.grams) || 0) * (Number(row.costKg) || 0) : (Number(row.grams) || 0) / 1000 * (Number(row.costKg) || 0);
-var catTag = row.category ? '<span class="ing-cat-tag">' + escapeHtml(row.category) + '</span>' : '';
-var bubble = '';
+function computeLineCost(row) {
+return row.perUnit ? (Number(row.grams) || 0) * (Number(row.costKg) || 0) : (Number(row.grams) || 0) / 1000 * (Number(row.costKg) || 0);
+}
+
+function rowBubbleHtml(row) {
 if (row.type === 'ingredient' && row.refId) {
 var ing = INGR_BY_ID[row.refId];
 var optim = ing ? getBestSupplierOption(ing) : null;
 if (optim) {
-bubble = '<div class="reco-bubble"><i class="ti ti-bolt"></i><span>Recommandation : le produit <b>' + escapeHtml(optim.supplierProductName) + '</b> chez <b>' + escapeHtml(optim.supplierName) + '</b> est moins cher (estimation -' + fmtPct(optim.savingsPct) + '), ce qui ferait baisser le food cost de cette ligne.</span></div>';
+return '<div class="reco-bubble"><i class="ti ti-bolt"></i><span>Recommandation : le produit <b>' + escapeHtml(optim.supplierProductName) + '</b> chez <b>' + escapeHtml(optim.supplierName) + '</b> est moins cher (estimation -' + fmtPct(optim.savingsPct) + '), ce qui ferait baisser le food cost de cette ligne.</span></div>';
 }
 }
-return '<div class="ing-row">' +
-'<div class="ing-name-cell"><input type="text" list="rdPickList" placeholder="Ingredient ou sous-recette" value="' + escapeHtml(row.name || '') + '" oninput="updateIngRow(' + idx + ',\'name\',this.value)">' + catTag + '</div>' +
-'<input type="number" placeholder="' + qtyLabel + '" value="' + (row.grams || '') + '" oninput="updateIngRow(' + idx + ',\'grams\',this.value)">' +
-'<input type="number" step="0.01" placeholder="' + priceLabel + '" value="' + (row.costKg || '') + '" oninput="updateIngRow(' + idx + ',\'costKg\',this.value)">' +
-'<div class="num">' + fmtEUR(lineCost) + '</div>' +
+return '';
+}
+
+function ingRowBlockHtml(row, idx) {
+var qtyLabel = row.perUnit ? 'Qte (unites)' : 'Grammes';
+var priceLabel = row.perUnit ? '€ / unite' : '€ / kg';
+var catTag = row.category ? '<span class="ing-cat-tag">' + escapeHtml(row.category) + '</span>' : '';
+return '<div class="ing-row-block" id="ing-block-' + idx + '">' +
+'<div class="ing-row">' +
+'<div class="ing-name-cell"><input type="text" list="rdPickList" placeholder="Ingredient ou sous-recette" value="' + escapeHtml(row.name || '') + '" data-idx="' + idx + '" data-field="name" oninput="onIngInput(this)">' + catTag + '</div>' +
+'<input type="number" placeholder="' + qtyLabel + '" value="' + (row.grams || '') + '" data-idx="' + idx + '" data-field="grams" oninput="onIngInput(this)">' +
+'<input type="number" step="0.01" placeholder="' + priceLabel + '" value="' + (row.costKg || '') + '" data-idx="' + idx + '" data-field="costKg" oninput="onIngInput(this)">' +
+'<div class="num" id="ing-cost-' + idx + '">' + fmtEUR(computeLineCost(row)) + '</div>' +
 '<button type="button" class="rm" onclick="removeIngRow(' + idx + ')">&times;</button>' +
-'</div>' + bubble;
-}).join('');
+'</div>' +
+'<div id="ing-bubble-' + idx + '">' + rowBubbleHtml(row) + '</div>' +
+'</div>';
+}
+
+function renderIngRows() {
+var el = document.getElementById('ingRows');
+el.innerHTML = currentIngredients.map(function (row, idx) { return ingRowBlockHtml(row, idx); }).join('');
 updateTotals();
 }
 function addIngRow() { currentIngredients.push({ name: '', grams: 0, costKg: 0, type: 'ingredient', category: '', perUnit: false }); renderIngRows(); }
 function removeIngRow(idx) { currentIngredients.splice(idx, 1); renderIngRows(); }
-function updateIngRow(idx, field, value) {
+
+function onIngInput(inputEl) {
+var idx = Number(inputEl.dataset.idx);
+var field = inputEl.dataset.field;
+var value = inputEl.value;
 var row = currentIngredients[idx];
+if (!row) return;
 if (field === 'name') {
 row.name = value;
 var match = RD_PICKLIST.filter(function (p) { return pickDisplayName(p).toLowerCase() === value.toLowerCase(); })[0];
@@ -648,17 +662,22 @@ row.type = match.type;
 row.category = match.category;
 row.costKg = match.costPerKg;
 row.perUnit = match.perUnit;
+renderIngRows();
+var newInput = document.querySelector('#ing-block-' + idx + ' input[data-field="name"]');
+if (newInput) { newInput.focus(); var v = newInput.value; newInput.setSelectionRange(v.length, v.length); }
+return;
 } else {
 row.refId = null;
 row.type = 'ingredient';
-row.perUnit = row.perUnit || false;
 }
 } else if (field === 'grams') {
 row.grams = Number(value) || 0;
 } else if (field === 'costKg') {
 row.costKg = Number(value) || 0;
 }
-renderIngRows();
+var costEl = document.getElementById('ing-cost-' + idx);
+if (costEl) costEl.textContent = fmtEUR(computeLineCost(row));
+updateTotals();
 }
 function updateTotals() {
 var totalCost = currentIngredients.reduce(function (s, r) {
